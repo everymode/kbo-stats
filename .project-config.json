@@ -1,0 +1,35 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [],
+  "dev_command": "pnpm run dev",
+  "env_vars": {},
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/89985747/AKLzP3Cbt4L68okniKfJmh",
+    "access_key_id": "ASIAZV3A2ECZN37QZNSL",
+    "secret_access_key": "vZ1aqcrkR5Vs0p0Allj1M5ZQxlBdcV4U4KFIp1uE",
+    "session_token": "IQoJb3JpZ2luX2VjEJH//////////wEaCXVzLWVhc3QtMSJGMEQCIGECtb8Tu/o9CTXhU8qUHdwFyCGz7jQcav9HCcJ1KwiMAiAsZEHKrf9gi2or5Ix3Qug3OMX9kXJLFXL06x/yGNIgXCriAwhaEAQaDDY2NTM4NjA5ODg2NiIMQRTVgi+h05NMoacjKr8Ddo7CIdfHtJY/1h/G3J3Ot4tbGH0LrUxBpgGs+mOlTfM10cIpz8jJLpKJCzIJDc7wgaWqEyFJrq1FXrTmdEREI1hkR+mH4a2eCPnTNvTTlcuoSgxmujxkhIQS4yBnTUnntyC3Oy13MVuHYGcgiIIeSqHybMbQljtVhKSC70uXEo9dn80t0dKpMiFZ/29SsxFwhQHeRdNRnwO8SA+5zdrGupjmpKEs+zR3dEiA/SELNV42geM9rUDPbD6jO2k13zVeDFkMVSONoYQ+Io/OULSAYYl+yBA7jWuoKvT5C5WF3EE77uGeiARee9c+7M/NimWqBDibXHtKrkF0/F7qEiTxhXUPS/1vWqRSWFIAp7ivzr0fwpHMgXz/exVPZX8icZ2z4Z7Wc/hefHDJE+hxJ07sT9WVArrhfPriqBk1LisnFRxAuyPgbPftwzLbtDNyy816brNKKNwKsBvCVUDBiu+9BDh0QT2oCGYuCV+Nlz9+ra7hnejX+htzcAKmEpcTE6Bu+6RVQRk0Wslj3h7g2gjaJQjO1ED5iB0XyfGjr3kNLZ2Su6QswmoNZFRE6Hajy32SYbc8fZB6iTsmfNI96l7qMLufltAGOp4BUVSAu039gp5ew+m59VGSxS9pAbg+yYXV8uiZFV/tdt7yKpgvoqyySzLNxcMjHQTEBeMuA9V01Pkn0LKWJZMwVXX7IUCkqENV8v5OC+Pn/a2XHvcnSvAume+SUldliu5CSKLwRL0N8BT9wLUsSiL3evrhIOjW9gaJffAxBPXbQNNs/3e0Gnrf2Csc0NjyLFmzwSdT27I46hzAtc1/jkE=",
+    "expiration": "2026-05-14T21:02:51.000Z"
+  },
+  "name": "kbo-stats",
+  "path": "/home/ubuntu/kbo-stats",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "RYFhzEA63BhK8Jd6yBPwKP",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "i7GXF6HDS7petQMLjw9qJL",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Derek LEE",
+    "OWNER_OPEN_ID": "9dFmi5QQVmeqYQptzU6pvM",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "f8113d62-5cb6-475b-9788-4173c9b3e4b4",
+    "VITE_APP_ID": "AKLzP3Cbt4L68okniKfJmh",
+    "VITE_APP_LOGO": "",
+    "VITE_APP_TITLE": "KBO Stats",
+    "VITE_FRONTEND_FORGE_API_KEY": "JSwTAE9yHDAbhcQJaNRqmf",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-static",
+  "test_command": "pnpm test"
+}
