@@ -7,7 +7,7 @@ import {
   getPitchers,
   getLeaderboard,
   searchPlayers,
-} from "../server/kbo.js";
+} from "../kbo.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
