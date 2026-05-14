@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Search } from "lucide-react";
+import { Users, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 const TEAMS = ["전체", "KIA", "삼성", "LG", "두산", "KT", "SSG", "NC", "롯데", "한화", "키움"];
 
@@ -96,9 +96,23 @@ export default function Players() {
   const [showSaber, setShowSaber] = useState(false);
   const [data, setData] = useState<(Hitter | Pitcher)[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      if (sortDir === "desc") setSortDir("asc");
+      else { setSortKey(null); setSortDir("desc"); }
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setSortKey(null);
+    setSortDir("desc");
     try {
       if (tab === "hitter") {
         const res = await kboApi.getHittersCombined("2026", 1);
@@ -121,6 +135,14 @@ export default function Players() {
     const matchSearch = !search || p.playerName.includes(search) || p.teamName.includes(search);
     return matchTeam && matchSearch;
   });
+
+  const sorted = sortKey
+    ? [...filtered].sort((a, b) => {
+        const va = parseFloat(String((a as any)[sortKey] ?? "0")) || 0;
+        const vb = parseFloat(String((b as any)[sortKey] ?? "0")) || 0;
+        return sortDir === "desc" ? vb - va : va - vb;
+      })
+    : filtered;
 
   // 표시할 컬럼 결정
   const allCols = tab === "hitter" ? HITTER_COLS : PITCHER_COLS;
@@ -190,10 +212,23 @@ export default function Players() {
           <div className="flex-1 grid gap-1 text-right" style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}>
             {visibleCols.map((col) => {
               const isSaber = SABER_HITTER_KEYS.has(col.key) || SABER_PITCHER_KEYS.has(col.key);
+              const isActive = sortKey === col.key;
               return (
-                <div key={col.key} title={col.title} className={`text-xs font-semibold uppercase ${isSaber ? "text-blue-400 dark:text-blue-300" : "text-muted-foreground"}`}>
+                <button
+                  key={col.key}
+                  title={`${col.title} (클릭하여 정렬)`}
+                  className={`flex items-center justify-end gap-0.5 text-xs font-semibold uppercase cursor-pointer select-none transition-colors hover:text-primary ${
+                    isActive ? "text-primary" : isSaber ? "text-blue-400 dark:text-blue-300" : "text-muted-foreground"
+                  }`}
+                  onClick={() => handleSort(col.key)}
+                >
                   {col.label}
-                </div>
+                  {isActive ? (
+                    sortDir === "desc" ? <ArrowDown size={11} /> : <ArrowUp size={11} />
+                  ) : (
+                    <ArrowUpDown size={10} className="opacity-30" />
+                  )}
+                </button>
               );
             })}
           </div>
@@ -209,7 +244,7 @@ export default function Players() {
           <div className="text-center py-12 text-muted-foreground">검색 결과가 없습니다.</div>
         ) : (
           <div className="divide-y divide-border/30 p-1">
-            {filtered.map((player, i) => (
+            {sorted.map((player, i) => (
               <PlayerRow
                 key={`${player.playerName}-${i}`}
                 player={player}

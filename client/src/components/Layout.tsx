@@ -24,7 +24,7 @@ const NAV_ITEMS = [
   { path: "/leaderboard", label: "리더보드", icon: BarChart3, description: "선수 순위" },
   { path: "/teams", label: "팀", icon: Trophy, description: "10개 구단" },
   { path: "/players", label: "선수", icon: Users, description: "선수 검색" },
-  { path: "/archive", label: "시즌 아카이브", icon: Calendar, description: "역대 기록" },
+  // { path: "/archive", label: "시즌 아카이브", icon: Calendar, description: "역대 기록" },
   { path: "/glossary", label: "용어 사전", icon: BookOpen, description: "야구 용어" },
 ];
 
