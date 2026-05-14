@@ -67,10 +67,17 @@ export interface Hitter {
   slg?: string;
   ops?: string;
   bb?: number;
+  ibb?: number;
+  hbp?: number;
   so?: number;
   sb?: number;
   cs?: number;
   gdp?: number;
+  // 세이버메트릭스
+  bbPct?: string;   // BB%
+  kPct?: string;    // K%
+  iso?: string;     // 순수장타율
+  babip?: string;   // 인플레이 타구 타율
 }
 
 export interface Pitcher {
@@ -96,6 +103,11 @@ export interface Pitcher {
   runs: number;
   er: number;
   whip: string;
+  // 세이버메트릭스
+  k9?: string;    // 9이닝당 탈삼진
+  bb9?: string;   // 9이닝당 볼넷
+  hr9?: string;   // 9이닝당 피홈런
+  fip?: string;   // 수비무관 평균자책점
 }
 
 export interface Schedule {
@@ -135,6 +147,10 @@ export const kboApi = {
   /** 타자 기록 (OPS/OBP/SLG 포함) */
   getHittersOps: (season = "2026", page = 1) =>
     fetchApi<ApiResponse<Hitter>>("/hitters/ops", { season, page: String(page) }),
+
+  /** 타자 통합 기록 (HR, RBI, H, OPS, OBP, SLG, BB%, K%, ISO, BABIP 모두 포함) */
+  getHittersCombined: (season = "2026", page = 1) =>
+    fetchApi<ApiResponse<Hitter>>("/hitters/combined", { season, page: String(page) }),
 
   /** 투수 기록 */
   getPitchers: (season = "2026", page = 1) =>

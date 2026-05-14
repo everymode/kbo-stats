@@ -55,13 +55,25 @@ function getTeamInfo(teamName: string) {
 const cache = new Map<string, { data: unknown; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
-function getCached(key: string): { data: unknown[] } | null {
+function getCached(key: string): any | null {
   const entry = cache.get(key);
-  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data as { data: unknown[] };
+  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
   return null;
 }
 function setCached(key: string, data: unknown) {
   cache.set(key, { data, ts: Date.now() });
+}
+
+// ─── 이닝 파싱 ("39 1/3" → 39.333) ──────────────────────
+function parseInnings(ipStr: string): number {
+  if (!ipStr) return 0;
+  const parts = ipStr.trim().split(" ");
+  if (parts.length === 1) return parseFloat(parts[0]) || 0;
+  const whole = parseInt(parts[0]) || 0;
+  const frac = parts[1];
+  if (frac === "1/3") return whole + 1/3;
+  if (frac === "2/3") return whole + 2/3;
+  return whole;
 }
 
 async function fetchHtml(url: string, params?: Record<string, string>): Promise<cheerio.CheerioAPI> {
@@ -90,7 +102,7 @@ function parseRows($: cheerio.CheerioAPI): string[][] {
 export async function getTeamRank() {
   const cacheKey = "team_rank";
   const cached = getCached(cacheKey);
-  if (cached) return cached as any;
+  if (cached) return cached;
 
   const $ = await fetchHtml(`${BASE_URL}/Record/TeamRank/TeamRankDaily.aspx`);
   const rows = parseRows($);
@@ -121,16 +133,14 @@ export async function getTeamRank() {
   return result;
 }
 
-// ─── 타자 기본 기록 (Basic1: AVG, HR, RBI 등) ──────────────
+// ─── 타자 기본 기록 (Basic1: AVG, HR, RBI, H 등) ───────────
 export async function getHitters(season = "2026", page = 1) {
   const cacheKey = `hitters_${season}_${page}`;
   const cached = getCached(cacheKey);
-  if (cached) return cached as any;
+  if (cached) return cached;
 
   const $ = await fetchHtml(`${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`, {
-    leagueId: "1",
-    seasonId: season,
-    currentPage: String(page),
+    leagueId: "1", seasonId: season, currentPage: String(page),
   });
   const rows = parseRows($);
 
@@ -168,12 +178,10 @@ export async function getHitters(season = "2026", page = 1) {
 export async function getHittersOps(season = "2026", page = 1) {
   const cacheKey = `hitters_ops_${season}_${page}`;
   const cached = getCached(cacheKey);
-  if (cached) return cached as any;
+  if (cached) return cached;
 
   const $ = await fetchHtml(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, {
-    leagueId: "1",
-    seasonId: season,
-    currentPage: String(page),
+    leagueId: "1", seasonId: season, currentPage: String(page),
   });
   const rows = parseRows($);
 
@@ -203,22 +211,90 @@ export async function getHittersOps(season = "2026", page = 1) {
   return result;
 }
 
+// ─── 타자 통합 데이터 (Basic1 + Basic2 병합) ───────────────
+export async function getHittersCombined(season = "2026", page = 1) {
+  const cacheKey = `hitters_combined_${season}_${page}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const [basic1, basic2] = await Promise.all([
+    getHitters(season, page),
+    getHittersOps(season, page),
+  ]);
+
+  // playerName 기준으로 병합
+  const opsMap = new Map<string, any>();
+  for (const p of basic2.data) {
+    opsMap.set(p.playerName, p);
+  }
+
+  const data = basic1.data.map((p: any) => {
+    const ops = opsMap.get(p.playerName) || {};
+    // 세이버메트릭스 계산
+    const bbPct = p.pa > 0 ? ((ops.bb || 0) / p.pa * 100).toFixed(1) : "0.0";
+    const kPct = p.pa > 0 ? ((ops.so || 0) / p.pa * 100).toFixed(1) : "0.0";
+    const iso = ops.slg && p.avg
+      ? (parseFloat(ops.slg) - parseFloat(p.avg)).toFixed(3)
+      : "0.000";
+    // BABIP = (H - HR) / (AB - SO - HR + SF)
+    const babipDenom = p.ab - (ops.so || 0) - p.hr + p.sf;
+    const babip = babipDenom > 0
+      ? ((p.hits - p.hr) / babipDenom).toFixed(3)
+      : "0.000";
+
+    return {
+      ...p,
+      bb: ops.bb || 0,
+      ibb: ops.ibb || 0,
+      hbp: ops.hbp || 0,
+      so: ops.so || 0,
+      gdp: ops.gdp || 0,
+      slg: ops.slg || "0",
+      obp: ops.obp || "0",
+      ops: ops.ops || "0",
+      // 계산된 세이버메트릭스
+      bbPct,
+      kPct,
+      iso,
+      babip,
+    };
+  });
+
+  const result = { data, season, page, updatedAt: new Date().toISOString() };
+  setCached(cacheKey, result);
+  return result;
+}
+
 // ─── 투수 기록 ─────────────────────────────────────────────
 export async function getPitchers(season = "2026", page = 1) {
   const cacheKey = `pitchers_${season}_${page}`;
   const cached = getCached(cacheKey);
-  if (cached) return cached as any;
+  if (cached) return cached;
 
   const $ = await fetchHtml(`${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`, {
-    leagueId: "1",
-    seasonId: season,
-    currentPage: String(page),
+    leagueId: "1", seasonId: season, currentPage: String(page),
   });
   const rows = parseRows($);
 
   // 컬럼: 순위|선수명|팀명|ERA|G|W|L|SV|HLD|WPCT|IP|H|HR|BB|HBP|SO|R|ER|WHIP
   const data = rows.map((cols) => {
     const teamInfo = getTeamInfo(cols[2] ?? "");
+    const ipStr = cols[10] || "0";
+    const ip = parseInnings(ipStr);
+    const so = parseInt(cols[15]) || 0;
+    const bb = parseInt(cols[13]) || 0;
+    const hr = parseInt(cols[12]) || 0;
+    const hbp = parseInt(cols[14]) || 0;
+
+    // 세이버메트릭스 계산 (정확한 이닝 파싱 적용)
+    const k9 = ip > 0 ? (so / ip * 9).toFixed(2) : "0.00";
+    const bb9 = ip > 0 ? (bb / ip * 9).toFixed(2) : "0.00";
+    const hr9 = ip > 0 ? (hr / ip * 9).toFixed(2) : "0.00";
+    // FIP = (13*HR + 3*(BB+HBP) - 2*SO) / IP + 상수(3.10)
+    const fip = ip > 0
+      ? ((13 * hr + 3 * (bb + hbp) - 2 * so) / ip + 3.10).toFixed(2)
+      : "0.00";
+
     return {
       rank: parseInt(cols[0]) || 0,
       playerName: cols[1] ?? "",
@@ -234,13 +310,18 @@ export async function getPitchers(season = "2026", page = 1) {
       wpct: cols[9] ?? "0",
       ip: cols[10] ?? "0",
       hits: parseInt(cols[11]) || 0,
-      hr: parseInt(cols[12]) || 0,
-      bb: parseInt(cols[13]) || 0,
-      hbp: parseInt(cols[14]) || 0,
-      so: parseInt(cols[15]) || 0,
+      hr,
+      bb,
+      hbp,
+      so,
       runs: parseInt(cols[16]) || 0,
       er: parseInt(cols[17]) || 0,
       whip: cols[18] ?? "0.00",
+      // 세이버메트릭스
+      k9,
+      bb9,
+      hr9,
+      fip,
     };
   }).filter(r => r.rank > 0 && r.playerName);
 
@@ -256,7 +337,7 @@ export async function getLeaderboard(
   team?: string,
   limit = 30
 ) {
-  const pitcherStats = new Set(["era", "wins", "so", "whip", "saves", "holds", "ip"]);
+  const pitcherStats = new Set(["era", "wins", "so", "whip", "saves", "holds", "ip", "k9", "bb9", "hr9", "fip"]);
   const basic1Stats = new Set(["hr", "rbi", "hits", "runs", "doubles", "triples", "tb"]);
 
   let rawData: any[];
@@ -268,27 +349,25 @@ export async function getLeaderboard(
     const res = await getHitters(season);
     rawData = res.data;
   } else {
-    const res = await getHittersOps(season);
+    // avg, ops, obp, slg, bb%, k%, iso, babip → 통합 데이터
+    const res = await getHittersCombined(season);
     rawData = res.data;
   }
 
-  // 팀 필터
   if (team) {
     rawData = rawData.filter(
-      (p) => p.teamName?.includes(team) || p.teamShort?.includes(team)
+      (p: any) => p.teamName?.includes(team) || p.teamShort?.includes(team)
     );
   }
 
-  // 정렬
-  const lowerBetter = new Set(["era", "whip"]);
-  rawData = [...rawData].sort((a, b) => {
+  const lowerBetter = new Set(["era", "whip", "fip", "bb9", "hr9", "kPct"]);
+  rawData = [...rawData].sort((a: any, b: any) => {
     const va = parseFloat(String(a[category] ?? "0")) || 0;
     const vb = parseFloat(String(b[category] ?? "0")) || 0;
     return lowerBetter.has(category) ? va - vb : vb - va;
   });
 
-  // 순위 재계산
-  const data = rawData.slice(0, limit).map((item, i) => ({
+  const data = rawData.slice(0, limit).map((item: any, i: number) => ({
     ...item,
     leaderboardRank: i + 1,
   }));
@@ -299,19 +378,19 @@ export async function getLeaderboard(
 // ─── 선수 검색 ─────────────────────────────────────────────
 export async function searchPlayers(q: string, season = "2026") {
   const [hitterRes, pitcherRes] = await Promise.all([
-    getHitters(season),
+    getHittersCombined(season),
     getPitchers(season),
   ]);
 
   const results: any[] = [];
 
   for (const p of hitterRes.data) {
-    if (p.playerName?.includes(q) || p.teamName?.includes(q)) {
+    if ((p as any).playerName?.includes(q) || (p as any).teamName?.includes(q)) {
       results.push({ ...p, type: "hitter" });
     }
   }
   for (const p of pitcherRes.data) {
-    if (p.playerName?.includes(q) || p.teamName?.includes(q)) {
+    if ((p as any).playerName?.includes(q) || (p as any).teamName?.includes(q)) {
       results.push({ ...p, type: "pitcher" });
     }
   }

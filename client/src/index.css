@@ -42,63 +42,42 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* ─── 다크 테마 (기본) — 야간 경기장 ─────────────────────── */
+/* ─── 라이트 테마 (기본 :root) ──────────────────────────── */
 :root {
   --radius: 0.5rem;
 
-  /* 배경 계층 */
-  --background: oklch(0.12 0.012 255);        /* #0D0F14 딥 네이비 블랙 */
-  --foreground: oklch(0.92 0.008 255);         /* #E8EAF0 밝은 텍스트 */
-
-  /* 카드 */
-  --card: oklch(0.16 0.014 255);               /* #161B26 카드 배경 */
-  --card-foreground: oklch(0.92 0.008 255);
-
-  /* 팝오버 */
-  --popover: oklch(0.18 0.014 255);
-  --popover-foreground: oklch(0.92 0.008 255);
-
-  /* 프라이머리 — 사이언 강조 */
-  --primary: oklch(0.82 0.18 200);             /* #00C8E0 사이언 */
-  --primary-foreground: oklch(0.10 0.012 255);
-
-  /* 세컨더리 */
-  --secondary: oklch(0.22 0.016 255);
-  --secondary-foreground: oklch(0.80 0.008 255);
-
-  /* 뮤트 */
-  --muted: oklch(0.20 0.012 255);
-  --muted-foreground: oklch(0.55 0.012 255);   /* #6B7280 */
-
-  /* 액센트 */
-  --accent: oklch(0.22 0.016 255);
-  --accent-foreground: oklch(0.92 0.008 255);
-
-  /* 디스트럭티브 */
-  --destructive: oklch(0.65 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-
-  /* 보더 */
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.82 0.18 200);
-
-  /* 차트 */
-  --chart-1: oklch(0.82 0.18 200);   /* 사이언 */
-  --chart-2: oklch(0.75 0.20 145);   /* 그린 */
-  --chart-3: oklch(0.78 0.18 60);    /* 오렌지 */
-  --chart-4: oklch(0.72 0.20 300);   /* 퍼플 */
-  --chart-5: oklch(0.70 0.22 25);    /* 레드 */
-
-  /* 사이드바 */
-  --sidebar: oklch(0.10 0.012 255);
-  --sidebar-foreground: oklch(0.85 0.008 255);
-  --sidebar-primary: oklch(0.82 0.18 200);
-  --sidebar-primary-foreground: oklch(0.10 0.012 255);
-  --sidebar-accent: oklch(0.18 0.014 255);
-  --sidebar-accent-foreground: oklch(0.92 0.008 255);
-  --sidebar-border: oklch(1 0 0 / 6%);
-  --sidebar-ring: oklch(0.82 0.18 200);
+  --background: oklch(0.97 0.003 255);
+  --foreground: oklch(0.15 0.012 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.012 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.012 255);
+  --primary: oklch(0.55 0.20 200);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.93 0.006 255);
+  --secondary-foreground: oklch(0.30 0.012 255);
+  --muted: oklch(0.93 0.006 255);
+  --muted-foreground: oklch(0.50 0.012 255);
+  --accent: oklch(0.93 0.006 255);
+  --accent-foreground: oklch(0.15 0.012 255);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0 0 0 / 12%);
+  --input: oklch(0 0 0 / 10%);
+  --ring: oklch(0.55 0.20 200);
+  --chart-1: oklch(0.55 0.20 200);
+  --chart-2: oklch(0.60 0.18 145);
+  --chart-3: oklch(0.65 0.18 60);
+  --chart-4: oklch(0.58 0.18 300);
+  --chart-5: oklch(0.55 0.22 25);
+  --sidebar: oklch(0.95 0.005 255);
+  --sidebar-foreground: oklch(0.20 0.012 255);
+  --sidebar-primary: oklch(0.55 0.20 200);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.90 0.006 255);
+  --sidebar-accent-foreground: oklch(0.15 0.012 255);
+  --sidebar-border: oklch(0 0 0 / 10%);
+  --sidebar-ring: oklch(0.55 0.20 200);
 
   /* KBO 구단 컬러 변수 */
   --team-kia: #EA0029;
@@ -113,35 +92,40 @@
   --team-kiwoom: #820024;
 }
 
-/* ─── 라이트 테마 ────────────────────────────────────────── */
-.light {
-  --background: oklch(0.97 0.003 255);
-  --foreground: oklch(0.15 0.012 255);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.012 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.012 255);
-  --primary: oklch(0.55 0.20 200);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.94 0.005 255);
-  --secondary-foreground: oklch(0.30 0.012 255);
-  --muted: oklch(0.94 0.005 255);
-  --muted-foreground: oklch(0.50 0.012 255);
-  --accent: oklch(0.94 0.005 255);
-  --accent-foreground: oklch(0.15 0.012 255);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0 0 0 / 10%);
-  --input: oklch(0 0 0 / 8%);
-  --ring: oklch(0.55 0.20 200);
-  --sidebar: oklch(0.96 0.005 255);
-  --sidebar-foreground: oklch(0.20 0.012 255);
-  --sidebar-primary: oklch(0.55 0.20 200);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.92 0.005 255);
-  --sidebar-accent-foreground: oklch(0.15 0.012 255);
-  --sidebar-border: oklch(0 0 0 / 8%);
-  --sidebar-ring: oklch(0.55 0.20 200);
+/* ─── 다크 테마 (.dark 클래스) — 야간 경기장 ───────────── */
+.dark {
+  --background: oklch(0.12 0.012 255);
+  --foreground: oklch(0.92 0.008 255);
+  --card: oklch(0.16 0.014 255);
+  --card-foreground: oklch(0.92 0.008 255);
+  --popover: oklch(0.18 0.014 255);
+  --popover-foreground: oklch(0.92 0.008 255);
+  --primary: oklch(0.82 0.18 200);
+  --primary-foreground: oklch(0.10 0.012 255);
+  --secondary: oklch(0.22 0.016 255);
+  --secondary-foreground: oklch(0.80 0.008 255);
+  --muted: oklch(0.20 0.012 255);
+  --muted-foreground: oklch(0.55 0.012 255);
+  --accent: oklch(0.22 0.016 255);
+  --accent-foreground: oklch(0.92 0.008 255);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.82 0.18 200);
+  --chart-1: oklch(0.82 0.18 200);
+  --chart-2: oklch(0.75 0.20 145);
+  --chart-3: oklch(0.78 0.18 60);
+  --chart-4: oklch(0.72 0.20 300);
+  --chart-5: oklch(0.70 0.22 25);
+  --sidebar: oklch(0.10 0.012 255);
+  --sidebar-foreground: oklch(0.85 0.008 255);
+  --sidebar-primary: oklch(0.82 0.18 200);
+  --sidebar-primary-foreground: oklch(0.10 0.012 255);
+  --sidebar-accent: oklch(0.18 0.014 255);
+  --sidebar-accent-foreground: oklch(0.92 0.008 255);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: oklch(0.82 0.18 200);
 }
 
 @layer base {
@@ -164,13 +148,11 @@
     @apply cursor-pointer;
   }
 
-  /* 숫자 폰트 */
   .font-stat {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-variant-numeric: tabular-nums;
   }
 
-  /* 헤더 폰트 */
   .font-display {
     font-family: 'Bebas Neue', 'Impact', sans-serif;
     letter-spacing: 0.05em;
@@ -206,17 +188,20 @@
     }
   }
 
-  /* 카드 글로우 이펙트 */
   .card-glow {
-    box-shadow: 0 0 0 1px oklch(1 0 0 / 6%), 0 4px 24px oklch(0 0 0 / 40%);
+    box-shadow: 0 0 0 1px oklch(0 0 0 / 6%), 0 4px 24px oklch(0 0 0 / 12%);
     transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1), transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
   }
+  .dark .card-glow {
+    box-shadow: 0 0 0 1px oklch(1 0 0 / 6%), 0 4px 24px oklch(0 0 0 / 40%);
+  }
   .card-glow:hover {
-    box-shadow: 0 0 0 1px oklch(0.82 0.18 200 / 30%), 0 8px 40px oklch(0 0 0 / 60%);
     transform: translateY(-2px);
   }
+  .dark .card-glow:hover {
+    box-shadow: 0 0 0 1px oklch(0.82 0.18 200 / 30%), 0 8px 40px oklch(0 0 0 / 60%);
+  }
 
-  /* 팀 컬러 배지 */
   .team-badge {
     display: inline-flex;
     align-items: center;
@@ -227,27 +212,23 @@
     letter-spacing: 0.05em;
   }
 
-  /* 순위 바 */
   .rank-bar {
     height: 6px;
     border-radius: 3px;
     transition: width 600ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
-  /* 스탯 카드 */
   .stat-card {
     background: var(--card);
-    border: 1px solid oklch(1 0 0 / 6%);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 1.25rem;
     transition: all 200ms cubic-bezier(0.23, 1, 0.32, 1);
   }
   .stat-card:hover {
-    border-color: oklch(0.82 0.18 200 / 40%);
-    box-shadow: 0 0 20px oklch(0.82 0.18 200 / 10%);
+    border-color: oklch(from var(--primary) l c h / 40%);
   }
 
-  /* 사이드바 링크 */
   .nav-link {
     display: flex;
     align-items: center;
@@ -259,18 +240,18 @@
     font-weight: 500;
     transition: all 150ms cubic-bezier(0.23, 1, 0.32, 1);
     text-decoration: none;
+    border-left: 2px solid transparent;
   }
   .nav-link:hover {
     background: var(--accent);
     color: var(--foreground);
   }
   .nav-link.active {
-    background: oklch(0.82 0.18 200 / 15%);
-    color: oklch(0.82 0.18 200);
-    border-left: 2px solid oklch(0.82 0.18 200);
+    background: oklch(from var(--primary) l c h / 15%);
+    color: var(--primary);
+    border-left-color: var(--primary);
   }
 
-  /* 숫자 카운트업 */
   @keyframes countup {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -279,7 +260,6 @@
     animation: countup 400ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
 
-  /* 스태거 페이드인 */
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
@@ -289,23 +269,13 @@
     opacity: 0;
   }
 
-  /* 스크롤바 스타일링 */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: oklch(1 0 0 / 15%);
-    border-radius: 3px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: oklch(1 0 0 / 25%);
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: oklch(0 0 0 / 15%); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(0 0 0 / 25%); }
+  .dark ::-webkit-scrollbar-thumb { background: oklch(1 0 0 / 15%); }
+  .dark ::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 25%); }
 
-  /* 테이블 스타일 */
   .data-table th {
     font-size: 0.7rem;
     font-weight: 600;
@@ -317,21 +287,25 @@
   }
   .data-table td {
     padding: 0.625rem 0.75rem;
-    border-bottom: 1px solid oklch(1 0 0 / 4%);
+    border-bottom: 1px solid oklch(0 0 0 / 5%);
     font-size: 0.875rem;
   }
+  .dark .data-table td {
+    border-bottom-color: oklch(1 0 0 / 4%);
+  }
   .data-table tr:hover td {
+    background: oklch(0 0 0 / 3%);
+  }
+  .dark .data-table tr:hover td {
     background: oklch(1 0 0 / 3%);
   }
 }
 
-/* 버튼 active 피드백 */
 button:active:not(:disabled) {
   transform: scale(0.97);
   transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-countup,

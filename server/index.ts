@@ -6,6 +6,7 @@ import {
   getTeamRank,
   getHitters,
   getHittersOps,
+  getHittersCombined,
   getPitchers,
   getLeaderboard,
   searchPlayers,
@@ -48,6 +49,18 @@ async function startServer() {
       const season = String(req.query.season ?? "2026");
       const page = parseInt(String(req.query.page ?? "1"));
       const data = await getHitters(season, page);
+      res.json(data);
+    } catch (e: any) {
+      res.status(503).json({ error: e.message });
+    }
+  });
+
+  // 타자 통합 기록 (Basic1 + Basic2 병합: HR, RBI, H, OPS, OBP, SLG, BB%, K%, ISO, BABIP)
+  app.get("/api/kbo/hitters/combined", async (req, res) => {
+    try {
+      const season = String(req.query.season ?? "2026");
+      const page = parseInt(String(req.query.page ?? "1"));
+      const data = await getHittersCombined(season, page);
       res.json(data);
     } catch (e: any) {
       res.status(503).json({ error: e.message });
