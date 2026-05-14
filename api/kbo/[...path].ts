@@ -7,7 +7,7 @@ import {
   getPitchers,
   getLeaderboard,
   searchPlayers,
-} from "../kbo.js";
+} from "../kbo";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -18,7 +18,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // /api/kbo/xxx 에서 xxx 추출
   const url = req.url || "";
-  const path = url.replace(/\?.*$/, "").replace(/^\/api\/kbo\/?/, "");
+  const pathSegments = req.query.path;
+  const path = Array.isArray(pathSegments) ? pathSegments.join("/") : (pathSegments || "");
 
   try {
     switch (path) {
