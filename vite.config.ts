@@ -224,6 +224,13 @@ export default defineConfig({
     port: 3000,
     strictPort: false, // Will find next available port if 3000 is busy
     host: true,
+    proxy: {
+      '/kbo-api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/kbo-api/, ''),
+      },
+    },
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",
