@@ -5,9 +5,10 @@
 
 const API_BASE = import.meta.env.VITE_KBO_API_URL || "/api/kbo";
 
-async function fetchApi<T>(path: string, params?: Record<string, string>): Promise<T> {
+async function fetchApi<T>(action: string, params?: Record<string, string>): Promise<T> {
   const base = API_BASE.startsWith('http') ? API_BASE : window.location.origin + API_BASE;
-  const url = new URL(`${base}${path}`);
+  const url = new URL(base);
+  url.searchParams.set("action", action);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
@@ -138,41 +139,41 @@ export interface LeaderboardResponse<T> {
 export const kboApi = {
   /** 팀 순위 */
   getTeamRank: () =>
-    fetchApi<{ data: TeamRank[]; updatedAt: string }>("/team-rank"),
+    fetchApi<{ data: TeamRank[]; updatedAt: string }>("team-rank"),
 
   /** 타자 기록 */
   getHitters: (season = "2026", page = 1) =>
-    fetchApi<ApiResponse<Hitter>>("/hitters", { season, page: String(page) }),
+    fetchApi<ApiResponse<Hitter>>("hitters", { season, page: String(page) }),
 
   /** 타자 기록 (OPS/OBP/SLG 포함) */
   getHittersOps: (season = "2026", page = 1) =>
-    fetchApi<ApiResponse<Hitter>>("/hitters/ops", { season, page: String(page) }),
+    fetchApi<ApiResponse<Hitter>>("hitters-ops", { season, page: String(page) }),
 
   /** 타자 통합 기록 (HR, RBI, H, OPS, OBP, SLG, BB%, K%, ISO, BABIP 모두 포함) */
   getHittersCombined: (season = "2026", page = 1) =>
-    fetchApi<ApiResponse<Hitter>>("/hitters/combined", { season, page: String(page) }),
+    fetchApi<ApiResponse<Hitter>>("hitters-combined", { season, page: String(page) }),
 
   /** 투수 기록 */
   getPitchers: (season = "2026", page = 1) =>
-    fetchApi<ApiResponse<Pitcher>>("/pitchers", { season, page: String(page) }),
+    fetchApi<ApiResponse<Pitcher>>("pitchers", { season, page: String(page) }),
 
   /** 경기 일정/결과 */
   getSchedule: (gameDate?: string) =>
-    fetchApi<ApiResponse<Schedule>>("/schedule", gameDate ? { game_date: gameDate } : {}),
+    fetchApi<ApiResponse<Schedule>>("schedule", gameDate ? { game_date: gameDate } : {}),
 
   /** 통합 리더보드 */
   getLeaderboard: (category: string, season = "2026", team?: string, limit = 30) => {
     const params: Record<string, string> = { category, season, limit: String(limit) };
     if (team) params.team = team;
-    return fetchApi<LeaderboardResponse<Hitter | Pitcher>>("/leaderboard", params);
+    return fetchApi<LeaderboardResponse<Hitter | Pitcher>>("leaderboard", params);
   },
 
   /** 선수 검색 */
   searchPlayers: (q: string, season = "2026") =>
-    fetchApi<{ data: (Hitter | Pitcher)[]; query: string }>("/search", { q, season }),
+    fetchApi<{ data: (Hitter | Pitcher)[]; query: string }>("search", { q, season }),
 
   /** 헬스체크 */
-  health: () => fetchApi<{ status: string; timestamp: string }>("/health"),
+  health: () => fetchApi<{ status: string; timestamp: string }>("health"),
 };
 
 // ─── 팀 컬러 유틸리티 ────────────────────────────────────────
