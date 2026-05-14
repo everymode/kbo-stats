@@ -2,6 +2,11 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist/public",
   "framework": "vite",
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "api/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/kbo/:path*", "destination": "/api/kbo/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
