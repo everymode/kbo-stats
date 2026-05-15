@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Clock,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Input } from "@/components/ui/input";
@@ -78,21 +79,25 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* ─── 사이드바 ─────────────────────────────────── */}
       <aside
-        className={`fixed left-0 top-0 z-50 h-full w-64 flex flex-col bg-card border-r border-border shadow-lg transition-transform duration-300 ease-out lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-50 h-full w-56 flex flex-col transition-transform duration-300 ease-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:static lg:flex`}
+        style={{ background: "#1a2332" }}
       >
         {/* 로고 */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-border">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-white shadow-md">
-            <span className="font-bold text-lg leading-none">K</span>
+        <div className="flex flex-col items-center py-6 border-b border-white/10">
+          {/* 야구공 아이콘 */}
+          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-3">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="16" stroke="#e8e0d4" strokeWidth="2" fill="none"/>
+              <path d="M10 6C12 10 12 14 10 18C8 22 8 26 10 30" stroke="#c44" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+              <path d="M26 6C24 10 24 14 26 18C28 22 28 26 26 30" stroke="#c44" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            </svg>
           </div>
-          <div>
-            <div className="font-display text-lg text-foreground leading-tight">KBO STATS</div>
-            <div className="text-[0.65rem] text-muted-foreground mt-0.5 font-medium">한국 프로야구 기록실</div>
-          </div>
+          <div className="text-white font-bold text-base tracking-wide">KBO Records</div>
+          <div className="text-white/50 text-[0.65rem] mt-0.5">한국 프로야구 기록실</div>
           <button
-            className="ml-auto lg:hidden text-muted-foreground hover:text-foreground"
+            className="absolute top-4 right-3 lg:hidden text-white/60 hover:text-white"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={18} />
@@ -108,24 +113,26 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`nav-link animate-fade-in-up ${isActive ? "active" : ""}`}
-                style={{ animationDelay: `${idx * 40}ms` }}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm ${
+                  isActive
+                    ? "bg-white/15 text-white font-semibold border-l-3 border-white"
+                    : "text-white/60 hover:bg-white/8 hover:text-white/90"
+                }`}
                 onClick={() => setSidebarOpen(false)}
               >
                 <Icon size={18} className="shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold leading-none">{item.label}</div>
-                  <div className="text-[0.65rem] text-muted-foreground mt-1 truncate">{item.description}</div>
+                  <div className="leading-none font-medium">{item.label}</div>
+                  <div className="text-[0.6rem] opacity-60 mt-0.5">{item.description}</div>
                 </div>
-                {isActive && <ChevronRight size={14} className="text-primary shrink-0" />}
               </Link>
             );
           })}
         </nav>
 
         {/* 하단 */}
-        <div className="px-4 py-4 border-t border-border">
-          <div className="text-[0.65rem] text-muted-foreground text-center font-medium">
+        <div className="px-4 py-4 border-t border-white/10">
+          <div className="text-[0.6rem] text-white/40 text-center">
             데이터 출처: KBO 공식 사이트
           </div>
         </div>
@@ -134,7 +141,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* ─── 메인 영역 ────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* 상단 바 */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 px-5 py-3.5 bg-card/80 backdrop-blur-xl border-b border-border shadow-sm">
+        <header className="sticky top-0 z-30 flex items-center gap-3 px-5 py-3 bg-background border-b border-border">
           {/* 모바일 메뉴 버튼 */}
           <button
             className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
@@ -144,10 +151,10 @@ export default function Layout({ children }: LayoutProps) {
           </button>
 
           {/* 검색바 */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 max-w-lg">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
-              className="pl-9 bg-secondary border-border text-sm h-9 focus:border-primary rounded-xl"
+              className="pl-9 bg-card border-border text-sm h-10 rounded-lg"
               placeholder="선수명, 팀명으로 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -180,18 +187,19 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
 
-          {/* 현재 페이지 제목 (모바일) */}
-          <div className="lg:hidden font-display text-base text-foreground tracking-wider">
-            {NAV_ITEMS.find((n) => n.path === location)?.label || "KBO STATS"}
+          {/* 업데이트 시간 */}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock size={13} />
+            <span>{new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 업데이트</span>
           </div>
 
           {/* 다크/라이트 토글 */}
           <button
-            className="ml-auto flex items-center justify-center w-9 h-9 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent border border-border transition-all"
+            className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border text-sm font-medium text-foreground hover:bg-accent transition-all"
             onClick={toggleTheme}
-            title={theme === "dark" ? "라이트 모드" : "다크 모드"}
           >
-            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            <span className="hidden sm:inline">{theme === "dark" ? "라이트 모드" : "다크 모드"}</span>
           </button>
         </header>
 

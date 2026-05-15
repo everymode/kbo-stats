@@ -46,12 +46,12 @@
 :root {
   --radius: 0.75rem;
 
-  --background: #F8FAFC;
-  --foreground: #0F172A;
+  --background: #f5f3ef;
+  --foreground: #1a1a1a;
   --card: #FFFFFF;
-  --card-foreground: #0F172A;
+  --card-foreground: #1a1a1a;
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
+  --popover-foreground: #1a1a1a;
   --primary: #2563EB;
   --primary-foreground: #FFFFFF;
   --secondary: #F1F5F9;

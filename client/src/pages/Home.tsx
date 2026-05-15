@@ -1,38 +1,32 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { kboApi, TeamRank, Hitter, Pitcher } from "@/lib/kboApi";
-import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingUp, Trophy, Zap, Target, RefreshCw, Medal } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
-// ─── 숫자 카운트업 훅 ──────────────────────────────────────
-function useCountUp(target: number, duration = 800) {
-  const [value, setValue] = useState(0);
-  const rafRef = useRef<number>(0);
-  useEffect(() => {
-    const start = performance.now();
-    const animate = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(target * eased));
-      if (progress < 1) rafRef.current = requestAnimationFrame(animate);
-    };
-    rafRef.current = requestAnimationFrame(animate);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [target, duration]);
-  return value;
+// ─── 팀 로고 매핑 ───────────────────────────────────────
+const TEAM_LOGO_MAP: Record<string, string> = {
+  KT: "/logos/KT.svg",
+  삼성: "/logos/samsung.svg",
+  LG: "/logos/lg.svg",
+  SSG: "/logos/ssg.svg",
+  KIA: "/logos/KIA.svg",
+  한화: "/logos/hanhwa.svg",
+  두산: "/logos/Doosan.svg",
+  NC: "/logos/nc.svg",
+  롯데: "/logos/Lotte.svg",
+  키움: "/logos/Kiwoom.svg",
+};
+
+function getTeamLogo(teamName: string) {
+  for (const [key, path] of Object.entries(TEAM_LOGO_MAP)) {
+    if (teamName.includes(key)) return path;
+  }
+  return "";
 }
 
-// ─── 순위 메달 뱃지 ──────────────────────────────────────
-function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 font-bold text-xs shadow-sm">🥇</span>;
-  if (rank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 font-bold text-xs shadow-sm">🥈</span>;
-  if (rank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400 font-bold text-xs shadow-sm">🥉</span>;
-  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-secondary text-muted-foreground font-bold text-xs">{rank}</span>;
-}
-
-// ─── 최근 10경기 시각화 ──────────────────────────────────
-function RecentTenVisual({ recentTen }: { recentTen: string }) {
+// ─── 최근 10경기 색상 블록 ────────────────────────────────
+function RecentTenBlocks({ recentTen }: { recentTen: string }) {
   if (!recentTen) return null;
   const wMatch = recentTen.match(/(\d+)승/);
   const dMatch = recentTen.match(/(\d+)무/);
@@ -40,94 +34,80 @@ function RecentTenVisual({ recentTen }: { recentTen: string }) {
   const w = parseInt(wMatch?.[1] ?? "0");
   const d = parseInt(dMatch?.[1] ?? "0");
   const l = parseInt(lMatch?.[1] ?? "0");
-  const boxes: string[] = [];
-  for (let i = 0; i < w; i++) boxes.push("w");
-  for (let i = 0; i < d; i++) boxes.push("d");
-  for (let i = 0; i < l; i++) boxes.push("l");
+  const blocks: ("w" | "d" | "l")[] = [];
+  for (let i = 0; i < w; i++) blocks.push("w");
+  for (let i = 0; i < d; i++) blocks.push("d");
+  for (let i = 0; i < l; i++) blocks.push("l");
+
   return (
-    <div className="flex gap-0.5">
-      {boxes.map((b, i) => (
+    <div className="flex gap-[3px]">
+      {blocks.map((b, i) => (
         <div
           key={i}
-          className={`w-2 h-2 rounded-sm ${
-            b === "w" ? "bg-green-500" : b === "d" ? "bg-yellow-400" : "bg-red-400"
+          className={`w-[18px] h-[18px] rounded text-[9px] font-bold flex items-center justify-center text-white ${
+            b === "w" ? "bg-green-600" : b === "d" ? "bg-gray-400" : "bg-red-500"
           }`}
-        />
+        >
+          {b === "w" ? "승" : b === "d" ? "무" : "패"}
+        </div>
       ))}
     </div>
   );
 }
 
-// ─── 팀 순위 카드 ─────────────────────────────────────────
-function TeamRankCard({ team, index }: { team: TeamRank; index: number }) {
-  const wins = useCountUp(team.wins, 600 + index * 80);
-  const losses = useCountUp(team.losses, 600 + index * 80);
-
+// ─── 선수 실루엣 SVG ──────────────────────────────────────
+function BatterSilhouette({ className }: { className?: string }) {
   return (
-    <div
-      className="flex items-center gap-3 py-3.5 px-4 rounded-xl hover:bg-accent/60 transition-all animate-fade-in-up"
-      style={{ animationDelay: `${index * 50}ms` }}
-    >
-      {/* 순위 메달 */}
-      <RankBadge rank={team.rank} />
-
-      {/* 팀 아바타 + 이름 */}
-      <div className="flex-1 min-w-0 flex items-center gap-2.5">
-        <TeamBadge teamName={team.teamName} size="md" />
-        <div>
-          <span className="text-sm font-semibold text-foreground">{team.teamFull}</span>
-          <div className="mt-0.5">
-            <RecentTenVisual recentTen={team.recentTen} />
-          </div>
-        </div>
-      </div>
-
-      {/* 성적 */}
-      <div className="text-right shrink-0">
-        <div className="font-stat text-sm font-semibold">
-          <span className="text-foreground">{wins}</span>
-          <span className="text-muted-foreground mx-0.5">-</span>
-          <span className="text-foreground">{losses}</span>
-          {team.draws > 0 && <span className="text-muted-foreground">-{team.draws}</span>}
-        </div>
-        <div className="text-xs text-muted-foreground font-stat">{team.winRate}</div>
-      </div>
-    </div>
+    <svg viewBox="0 0 80 120" className={className} fill="currentColor" opacity="0.12">
+      <ellipse cx="40" cy="25" rx="10" ry="12" />
+      <path d="M30 38 C25 42 22 55 24 70 L28 70 L30 55 L35 50 L35 90 L30 115 L35 115 L42 90 L48 115 L53 115 L48 90 L48 50 L53 55 L55 70 L59 70 C61 55 58 42 53 38 Z" />
+      <path d="M53 42 L70 20 L72 22 L56 45 Z" />
+    </svg>
   );
 }
 
-// ─── 오늘의 리더 카드 ─────────────────────────────────────
+function PitcherSilhouette({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 80 120" className={className} fill="currentColor" opacity="0.12">
+      <ellipse cx="40" cy="22" rx="9" ry="11" />
+      <path d="M32 34 C27 38 25 50 26 62 L30 62 L32 50 L36 46 L36 85 L31 112 L36 112 L42 85 L48 112 L53 112 L48 85 L48 46 L52 50 L54 62 L58 62 C59 50 57 38 52 34 Z" />
+      <path d="M28 38 L12 28 L11 31 L26 42 Z" />
+      <circle cx="10" cy="27" r="3" />
+    </svg>
+  );
+}
+
+// ─── 리더 카드 ────────────────────────────────────────────
 function LeaderCard({
   label,
-  player,
+  playerName,
+  teamName,
   value,
   unit,
-  icon: Icon,
-  delay,
+  type,
 }: {
   label: string;
-  player: string;
+  playerName: string;
+  teamName: string;
   value: string;
-  unit?: string;
-  icon: React.ElementType;
-  delay: number;
+  unit: string;
+  type: "batter" | "pitcher";
 }) {
   return (
-    <div
-      className="stat-card animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Icon size={16} className="text-primary" />
+    <div className="relative bg-card border border-border rounded-2xl p-5 overflow-hidden">
+      <div className="absolute right-2 top-2 bottom-2 w-20 pointer-events-none text-foreground">
+        {type === "batter" ? <BatterSilhouette className="w-full h-full" /> : <PitcherSilhouette className="w-full h-full" />}
+      </div>
+      <div className="relative z-10">
+        <div className="text-xs font-bold text-muted-foreground mb-2">{label}</div>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-3xl text-foreground leading-none">{value}</span>
+          <span className="text-sm font-semibold text-muted-foreground">{unit}</span>
         </div>
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{label}</span>
+        <div className="text-sm text-muted-foreground mt-2 font-medium">
+          {playerName} · {teamName}
+        </div>
       </div>
-      <div className="font-display text-3xl text-foreground leading-none mb-1.5">
-        {value}
-        {unit && <span className="text-base font-semibold text-muted-foreground ml-1.5">{unit}</span>}
-      </div>
-      <div className="text-sm text-muted-foreground font-medium">{player}</div>
     </div>
   );
 }
@@ -139,304 +119,189 @@ export default function Home() {
   const [pitchers, setPitchers] = useState<Pitcher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string>("");
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [rankRes, hitterRes, hrRes, pitcherRes, soRes] = await Promise.all([
-        kboApi.getTeamRank(),
-        kboApi.getLeaderboard("avg", "2026", undefined, 5),
-        kboApi.getLeaderboard("hr", "2026", undefined, 5),
-        kboApi.getLeaderboard("era", "2026", undefined, 5),
-        kboApi.getLeaderboard("so", "2026", undefined, 5),
-      ]);
-      setTeamRank(rankRes.data);
-      setHitters([
-        ...(hitterRes.data as Hitter[]),
-        ...(hrRes.data as Hitter[]),
-      ]);
-      setPitchers([
-        ...(pitcherRes.data as Pitcher[]),
-        ...(soRes.data as Pitcher[]),
-      ]);
-      setLastUpdated(new Date().toLocaleTimeString("ko-KR"));
-    } catch (e) {
-      setError("데이터를 불러오는 중 오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const [rankRes, avgRes, hrRes, eraRes, soRes] = await Promise.all([
+          kboApi.getTeamRank(),
+          kboApi.getLeaderboard("avg", "2026", undefined, 1),
+          kboApi.getLeaderboard("hr", "2026", undefined, 1),
+          kboApi.getLeaderboard("era", "2026", undefined, 1),
+          kboApi.getLeaderboard("so", "2026", undefined, 1),
+        ]);
+        setTeamRank(rankRes.data);
+        setHitters([...(avgRes.data as Hitter[]), ...(hrRes.data as Hitter[])]);
+        setPitchers([...(eraRes.data as Pitcher[]), ...(soRes.data as Pitcher[])]);
+      } catch {
+        setError("데이터를 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
-  useEffect(() => { loadData(); }, []);
-
-  // hitters[0..4] = avg TOP5, hitters[5..9] = hr TOP5
-  const topHitter = hitters[0] as Hitter | undefined;
-  const topHR = (hitters.slice(5, 10) as Hitter[]).sort((a, b) => (b.hr || 0) - (a.hr || 0))[0] || hitters[5] as Hitter | undefined;
-  // pitchers[0..4] = era TOP5, pitchers[5..9] = so TOP5
-  const topPitcher = pitchers[0] as Pitcher | undefined;
-  const topSO = (pitchers.slice(5, 10) as Pitcher[]).sort((a, b) => (b.so || 0) - (a.so || 0))[0] || pitchers[5] as Pitcher | undefined;
+  const topAvg = hitters[0] as Hitter | undefined;
+  const topHR = hitters[1] as Hitter | undefined;
+  const topERA = pitchers[0] as Pitcher | undefined;
+  const topSO = pitchers[1] as Pitcher | undefined;
 
   return (
-    <div className="p-4 lg:p-8 space-y-8">
-      {/* ─── 헤더 ─────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-display text-3xl lg:text-4xl text-foreground leading-tight">
-            오늘의 KBO
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
-          </p>
-        </div>
-        <button
-          onClick={loadData}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-lg bg-card border border-border hover:border-primary/30 shadow-sm"
-        >
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          {lastUpdated ? `${lastUpdated} 업데이트` : "새로고침"}
-        </button>
+    <div className="p-4 lg:p-6">
+      {/* 헤더 */}
+      <div className="mb-6">
+        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">오늘의 KBO</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">
+          {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
+        </p>
       </div>
 
       {error && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3 text-sm text-destructive">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3 text-sm text-destructive mb-4">
           {error}
         </div>
       )}
 
-      {/* ─── 메인 그리드 ──────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 메인 그리드: 팀순위 테이블 + 오늘의 리더 */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
 
-        {/* 팀 순위 (2/3 너비) */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Trophy size={16} className="text-primary" />
-              </div>
+        {/* ─── 팀 순위 테이블 ─────────────────────────── */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 bg-foreground rounded-full" />
               <h2 className="font-bold text-base">2026 시즌 팀 순위</h2>
             </div>
-            <Link href="/teams" className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+            <Link href="/teams" className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1">
               전체 보기 <ArrowRight size={12} />
             </Link>
           </div>
 
           {loading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full rounded-xl" />
-              ))}
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : (
-            <div className="space-y-1">
-              {teamRank.map((team, i) => (
-                <TeamRankCard key={team.teamName} team={team} index={i} />
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left py-3 px-4 text-xs font-bold text-muted-foreground w-14">순위</th>
+                    <th className="text-left py-3 px-2 text-xs font-bold text-muted-foreground">팀</th>
+                    <th className="text-center py-3 px-2 text-xs font-bold text-muted-foreground">최근 10경기</th>
+                    <th className="text-center py-3 px-2 text-xs font-bold text-muted-foreground">승-패-무</th>
+                    <th className="text-center py-3 px-2 text-xs font-bold text-muted-foreground">승률</th>
+                    <th className="text-center py-3 px-4 text-xs font-bold text-muted-foreground">게임차</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamRank.map((team, i) => (
+                    <>
+                      <tr
+                        key={team.teamName}
+                        className="border-b border-border/50 hover:bg-accent/40 transition-colors"
+                      >
+                        <td className="py-3 px-4 font-bold text-center text-base">{team.rank}</td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={getTeamLogo(team.teamName)}
+                              alt={team.teamName}
+                              className="w-8 h-8 object-contain"
+                            />
+                            <span className="font-semibold">{team.teamFull}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex justify-center">
+                            <RecentTenBlocks recentTen={team.recentTen} />
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center font-stat font-medium">
+                          {team.wins}-{team.losses}{team.draws > 0 ? `-${team.draws}` : ""}
+                        </td>
+                        <td className="py-3 px-2 text-center font-stat font-semibold">{team.winRate}</td>
+                        <td className="py-3 px-4 text-center font-stat text-muted-foreground">
+                          {team.gameBehind === "0" ? "-" : team.gameBehind}
+                        </td>
+                      </tr>
+                      {/* 포스트시즌 커트라인 (5위 아래) */}
+                      {i === 4 && (
+                        <tr key="cutline">
+                          <td colSpan={6} className="py-0">
+                            <div className="flex items-center gap-2 px-4 py-1">
+                              <div className="flex-1 border-t-2 border-dashed border-green-500/60" />
+                              <span className="text-[0.6rem] text-green-600 dark:text-green-400 font-bold whitespace-nowrap">포스트시즌 커트라인</span>
+                              <div className="flex-1 border-t-2 border-dashed border-green-500/60" />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+              <div className="px-5 py-2.5 text-[0.65rem] text-muted-foreground border-t border-border">
+                · 승률이 같은 경우 승수 → 상대 전적 → 득실률 → 추첨 순으로 순위를 결정합니다.
+              </div>
             </div>
           )}
         </div>
 
-        {/* 오늘의 리더 (1/3 너비) */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Zap size={16} className="text-primary" />
-            </div>
+        {/* ─── 오늘의 리더 ────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-4 border-b-2 border-foreground pb-2">
             <h2 className="font-bold text-base">오늘의 리더</h2>
           </div>
 
           {loading ? (
-            <>
-              <Skeleton className="h-24 w-full rounded-xl" />
-              <Skeleton className="h-24 w-full rounded-xl" />
-              <Skeleton className="h-24 w-full rounded-xl" />
-              <Skeleton className="h-24 w-full rounded-xl" />
-            </>
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-2xl" />)}
+            </div>
           ) : (
-            <>
-              {topHitter && (
+            <div className="space-y-4">
+              {topAvg && (
                 <LeaderCard
                   label="타율 1위"
-                  player={`${topHitter.playerName} · ${topHitter.teamName}`}
-                  value={topHitter.avg}
-                  icon={TrendingUp}
-                  delay={0}
+                  playerName={topAvg.playerName}
+                  teamName={topAvg.teamName}
+                  value={topAvg.avg}
+                  unit="AVG"
+                  type="batter"
                 />
               )}
               {topHR && (
                 <LeaderCard
                   label="홈런 1위"
-                  player={`${topHR.playerName} · ${topHR.teamName}`}
+                  playerName={topHR.playerName}
+                  teamName={topHR.teamName}
                   value={String(topHR.hr)}
                   unit="HR"
-                  icon={Target}
-                  delay={80}
+                  type="batter"
                 />
               )}
-              {topPitcher && (
+              {topERA && (
                 <LeaderCard
                   label="평균자책점 1위"
-                  player={`${topPitcher.playerName} · ${topPitcher.teamName}`}
-                  value={topPitcher.era}
+                  playerName={topERA.playerName}
+                  teamName={topERA.teamName}
+                  value={topERA.era}
                   unit="ERA"
-                  icon={Zap}
-                  delay={160}
+                  type="pitcher"
                 />
               )}
               {topSO && (
                 <LeaderCard
                   label="탈삼진 1위"
-                  player={`${topSO.playerName} · ${topSO.teamName}`}
+                  playerName={topSO.playerName}
+                  teamName={topSO.teamName}
                   value={String(topSO.so)}
                   unit="K"
-                  icon={Trophy}
-                  delay={240}
+                  type="pitcher"
                 />
               )}
-            </>
+            </div>
           )}
-        </div>
-      </div>
-
-      {/* ─── 타자 TOP 5 ────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <TrendingUp size={16} className="text-green-600 dark:text-green-400" />
-            </div>
-            <h2 className="font-bold text-base">타율 TOP 5</h2>
-          </div>
-          <Link href="/leaderboard" className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
-            리더보드 <ArrowRight size={12} />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full data-table">
-              <thead>
-                <tr>
-                  <th className="text-left">순위</th>
-                  <th className="text-left">선수</th>
-                  <th className="text-left">팀</th>
-                  <th className="text-right">타율</th>
-                  <th className="text-right">홈런</th>
-                  <th className="text-right">타점</th>
-                  <th className="text-right">안타</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hitters.map((h, i) => (
-                  <tr key={i} className="animate-fade-in-up" style={{ animationDelay: `${i * 60}ms` }}>
-                    <td>
-                      <RankBadge rank={i + 1} />
-                    </td>
-                    <td>
-                      <Link href={`/players/${encodeURIComponent(h.playerName)}`} className="font-semibold hover:text-primary transition-colors">
-                        {h.playerName}
-                      </Link>
-                    </td>
-                    <td><TeamBadge teamName={h.teamName} /></td>
-                    <td className="text-right font-stat font-bold text-primary">{h.avg}</td>
-                    <td className="text-right font-stat">{h.hr ?? "-"}</td>
-                    <td className="text-right font-stat">{h.rbi ?? "-"}</td>
-                    <td className="text-right font-stat">{h.hits ?? "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ─── 투수 TOP 5 ────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-              <Zap size={16} className="text-red-600 dark:text-red-400" />
-            </div>
-            <h2 className="font-bold text-base">평균자책점 TOP 5</h2>
-          </div>
-          <Link href="/leaderboard?tab=pitcher" className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
-            리더보드 <ArrowRight size={12} />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full data-table">
-              <thead>
-                <tr>
-                  <th className="text-left">순위</th>
-                  <th className="text-left">선수</th>
-                  <th className="text-left">팀</th>
-                  <th className="text-right">ERA</th>
-                  <th className="text-right">승</th>
-                  <th className="text-right">패</th>
-                  <th className="text-right">탈삼진</th>
-                  <th className="text-right">WHIP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pitchers.map((p, i) => (
-                  <tr key={i} className="animate-fade-in-up" style={{ animationDelay: `${i * 60}ms` }}>
-                    <td><RankBadge rank={i + 1} /></td>
-                    <td>
-                      <Link href={`/players/${encodeURIComponent(p.playerName)}`} className="font-semibold hover:text-primary transition-colors">
-                        {p.playerName}
-                      </Link>
-                    </td>
-                    <td><TeamBadge teamName={p.teamName} /></td>
-                    <td className="text-right font-stat font-bold text-primary">{p.era}</td>
-                    <td className="text-right font-stat">{p.wins}</td>
-                    <td className="text-right font-stat">{p.losses}</td>
-                    <td className="text-right font-stat">{p.so}</td>
-                    <td className="text-right font-stat">{p.whip}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ─── 히어로 배너 ──────────────────────────────── */}
-      <div
-        className="relative rounded-2xl overflow-hidden h-48 lg:h-64"
-        style={{
-          backgroundImage: `url(https://d2xsxph8kpxj0f.cloudfront.net/89985747/AKLzP3Cbt4L68okniKfJmh/kbo-hero-bg-JGUEncaiXZGR4rqpUP2SWu.webp)`,
-          backgroundSize: "cover",
-          backgroundPosition: "center 60%",
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/60 to-transparent" />
-        <div className="absolute inset-0 flex flex-col justify-center px-8">
-          <div className="font-display text-4xl lg:text-5xl text-foreground tracking-wider leading-none mb-2">
-            KBO STATS
-          </div>
-          <div className="text-muted-foreground text-sm lg:text-base max-w-sm">
-            실시간 크롤링 기반의 KBO 야구 기록 조회 플랫폼.<br />
-            선수·팀·리더보드를 한눈에 확인하세요.
-          </div>
-          <div className="flex gap-3 mt-4">
-            <Link href="/leaderboard" className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors shadow-md">
-              리더보드 보기 <ArrowRight size={14} />
-            </Link>
-            <Link href="/teams" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/80 dark:bg-white/10 text-foreground rounded-xl text-sm font-bold hover:bg-white dark:hover:bg-white/15 transition-colors backdrop-blur-sm shadow-sm border border-border">
-              팀 순위
-            </Link>
-          </div>
         </div>
       </div>
     </div>
