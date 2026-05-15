@@ -42,6 +42,41 @@ async function fH(url: string, params?: Record<string, string>) {
   return cheerio.load(r.data);
 }
 
+// 폼 필드 추출 헬퍼
+function extractForm($: cheerio.CheerioAPI) {
+  const fd: Record<string, string> = {};
+  $('input[type="hidden"]').each((_: number, el: any) => {
+    const n = $(el).attr('name'); if (n) fd[n] = ($(el).val() as string) || '';
+  });
+  $('select').each((_: number, el: any) => {
+    const n = $(el).attr('name'); if (n) fd[n] = ($(el).find('option[selected]').val() as string) || '';
+  });
+  return fd;
+}
+
+// 시즌 변경이 필요한 경우 PostBack으로 가져오기
+async function fHSeason(url: string, season: string) {
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+  const currentYear = new Date().getFullYear().toString();
+  const r1 = await axios.get(url, { headers: { ...HEADERS, 'User-Agent': UA }, params: { leagueId: '1' }, timeout: 15000, responseType: "text" });
+  const $1 = cheerio.load(r1.data);
+  if (season === currentYear) return $1;
+
+  // 시즌 변경 PostBack
+  const cookies = (r1.headers['set-cookie'] || []).map((c: string) => c.split(';')[0]).join('; ');
+  const fd = extractForm($1);
+  fd['ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason'] = season;
+  fd['__EVENTTARGET'] = 'ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason';
+  fd['__EVENTARGUMENT'] = '';
+  const form = new URLSearchParams();
+  for (const [k, v] of Object.entries(fd)) form.append(k, v);
+  const r2 = await axios.post(url + '?leagueId=1', form.toString(), {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA, 'Referer': url, 'Cookie': cookies },
+    timeout: 15000, responseType: 'text', validateStatus: (s: number) => s < 400,
+  });
+  return cheerio.load(r2.data);
+}
+
 // ASP.NET PostBack 페이지네이션 (쿠키 기반 세션 유지)
 async function fHPages(url: string, params: Record<string, string>, maxPages: number) {
   const fullUrl = url + '?' + new URLSearchParams(params).toString();
@@ -54,18 +89,6 @@ async function fHPages(url: string, params: Record<string, string>, maxPages: nu
   if (maxPages <= 1) return results;
 
   const cookies = (r1.headers['set-cookie'] || []).map((c: string) => c.split(';')[0]).join('; ');
-
-  // 폼 필드 추출 헬퍼
-  function extractForm($: cheerio.CheerioAPI) {
-    const fd: Record<string, string> = {};
-    $('input[type="hidden"]').each((_: number, el: any) => {
-      const n = $(el).attr('name'); if (n) fd[n] = ($(el).val() as string) || '';
-    });
-    $('select').each((_: number, el: any) => {
-      const n = $(el).attr('name'); if (n) fd[n] = ($(el).find('option[selected]').val() as string) || '';
-    });
-    return fd;
-  }
 
   // 2단계: POST로 나머지 페이지 순차 요청
   let curForm = extractForm($1);
@@ -113,7 +136,7 @@ async function getTeamRank() {
 
 async function getHitters(season = "2026", page = 1) {
   const ck = `h_${season}_${page}`; const c = gc(ck); if (c) return c;
-  const $ = await fH(`${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`, { leagueId: "1", seasonId: season, currentPage: String(page) });
+  const $ = await fHSeason(`${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`, season);
   const data = pR($).map(c => {
     const t = ti(c[2] ?? "");
     return { rank: parseInt(c[0])||0, playerName: c[1]??"", teamName: c[2]??"", teamShort: t.short, colors: t.colors,
@@ -126,7 +149,7 @@ async function getHitters(season = "2026", page = 1) {
 
 async function getHittersOps(season = "2026", page = 1) {
   const ck = `ho_${season}_${page}`; const c = gc(ck); if (c) return c;
-  const $ = await fH(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, { leagueId: "1", seasonId: season, currentPage: String(page) });
+  const $ = await fHSeason(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, season);
   const data = pR($).map(c => {
     const t = ti(c[2] ?? "");
     return { rank: parseInt(c[0])||0, playerName: c[1]??"", teamName: c[2]??"", teamShort: t.short, colors: t.colors,
@@ -216,7 +239,7 @@ async function getPitchersAll(season = "2026") {
 }
 async function getPitchers(season = "2026", page = 1) {
   const ck = `p_${season}_${page}`; const c = gc(ck); if (c) return c;
-  const $ = await fH(`${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`, { leagueId: "1", seasonId: season, currentPage: String(page) });
+  const $ = await fHSeason(`${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`, season);
   const data = pR($).map(c => {
     const t = ti(c[2] ?? "");
     const ip = pI(c[10]||"0"); const so = parseInt(c[15])||0; const bb = parseInt(c[13])||0;
