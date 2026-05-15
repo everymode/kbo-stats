@@ -276,6 +276,21 @@ async function getLeaderboard(cat: string, season = "2026", team?: string, limit
   if (ps.has(cat)) rd = (await getPitchersAll(season)).data;
   else rd = (await getHittersAll(season)).data;
   if (team) rd = rd.filter((p: any) => p.teamName?.includes(team)||p.teamShort?.includes(team));
+
+  // 규정타석/규정이닝 필터 (비율 스탯에만 적용)
+  const hRate = new Set(["avg","obp","slg","ops","iso","babip","bbPct","kPct"]);
+  const pRate = new Set(["era","whip","fip","k9","bb9","hr9"]);
+  if (hRate.has(cat)) {
+    const maxG = Math.max(...rd.map((p: any) => p.games || 0), 1);
+    const minPA = Math.floor(maxG * 3.1);
+    rd = rd.filter((p: any) => (p.pa || 0) >= minPA);
+  } else if (pRate.has(cat)) {
+    const cy = new Date().getFullYear().toString();
+    let tg = 144;
+    if (season === cy) { try { const tr: any = await getTeamRank(); tg = Math.max(...tr.data.map((t: any) => t.games || 0)); } catch {} }
+    rd = rd.filter((p: any) => pI(p.ip || "0") >= tg);
+  }
+
   const lb = new Set(["era","whip","fip","bb9","hr9","kPct"]);
   rd = [...rd].sort((a: any,b: any) => { const va = parseFloat(String(a[cat]??"0"))||0; const vb = parseFloat(String(b[cat]??"0"))||0; return lb.has(cat)?va-vb:vb-va; });
   return { data: rd.slice(0,limit).map((i: any,idx: number)=>({...i,leaderboardRank:idx+1})), category: cat, season, updatedAt: new Date().toISOString() };
