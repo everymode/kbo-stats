@@ -42,41 +42,50 @@ async function fH(url: string, params?: Record<string, string>) {
   return cheerio.load(r.data);
 }
 
-// ASP.NET PostBack 페이지네이션 지원
-async function fHPages(url: string, params: Record<string, string>, totalPages: number) {
-  // 1단계: GET으로 page 1 + ViewState 가져오기
-  const r1 = await axios.get(url, { headers: HEADERS, params, timeout: 15000, responseType: "text" });
+// ASP.NET PostBack 페이지네이션 (쿠키 기반 세션 유지)
+async function fHPages(url: string, params: Record<string, string>, maxPages: number) {
+  const fullUrl = url + '?' + new URLSearchParams(params).toString();
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+
+  // 1단계: GET page 1 + 쿠키/폼 추출
+  const r1 = await axios.get(fullUrl, { headers: { ...HEADERS, 'User-Agent': UA }, timeout: 15000, responseType: "text" });
   const $1 = cheerio.load(r1.data);
   const results: cheerio.CheerioAPI[] = [$1];
+  if (maxPages <= 1) return results;
 
-  if (totalPages <= 1) return results;
+  const cookies = (r1.headers['set-cookie'] || []).map((c: string) => c.split(';')[0]).join('; ');
 
-  // ASP.NET 폼 필드 추출
-  const vs = $1('#__VIEWSTATE').val() as string || '';
-  const vsg = $1('#__VIEWSTATEGENERATOR').val() as string || '';
-  const ev = $1('#__EVENTVALIDATION').val() as string || '';
-
-  // 2단계: POST로 나머지 페이지들 순차 요청 (ViewState가 매번 바뀌므로)
-  let curVS = vs, curVSG = vsg, curEV = ev;
-  for (let p = 2; p <= totalPages; p++) {
-    const form = new URLSearchParams();
-    form.append('__VIEWSTATE', curVS);
-    form.append('__VIEWSTATEGENERATOR', curVSG);
-    form.append('__EVENTVALIDATION', curEV);
-    form.append('__EVENTTARGET', `ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo${p}`);
-    form.append('__EVENTARGUMENT', '');
-
-    const rN = await axios.post(url, form.toString(), {
-      headers: { ...HEADERS, 'Content-Type': 'application/x-www-form-urlencoded' },
-      params, timeout: 15000, responseType: "text",
+  // 폼 필드 추출 헬퍼
+  function extractForm($: cheerio.CheerioAPI) {
+    const fd: Record<string, string> = {};
+    $('input[type="hidden"]').each((_: number, el: any) => {
+      const n = $(el).attr('name'); if (n) fd[n] = ($(el).val() as string) || '';
     });
-    const $N = cheerio.load(rN.data);
-    results.push($N);
+    $('select').each((_: number, el: any) => {
+      const n = $(el).attr('name'); if (n) fd[n] = ($(el).find('option[selected]').val() as string) || '';
+    });
+    return fd;
+  }
 
-    // 다음 페이지를 위해 ViewState 갱신
-    curVS = $N('#__VIEWSTATE').val() as string || curVS;
-    curVSG = $N('#__VIEWSTATEGENERATOR').val() as string || curVSG;
-    curEV = $N('#__EVENTVALIDATION').val() as string || curEV;
+  // 2단계: POST로 나머지 페이지 순차 요청
+  let curForm = extractForm($1);
+  for (let p = 2; p <= maxPages; p++) {
+    curForm['__EVENTTARGET'] = `ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo${p}`;
+    curForm['__EVENTARGUMENT'] = '';
+    const form = new URLSearchParams();
+    for (const [k, v] of Object.entries(curForm)) form.append(k, v);
+
+    try {
+      const rN = await axios.post(fullUrl, form.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA, 'Referer': fullUrl, 'Cookie': cookies },
+        timeout: 15000, responseType: "text", validateStatus: (s: number) => s < 400,
+      });
+      const $N = cheerio.load(rN.data);
+      const rows = pR($N);
+      if (rows.length === 0) break; // 더 이상 데이터 없음
+      results.push($N);
+      curForm = extractForm($N);
+    } catch { break; }
   }
   return results;
 }
