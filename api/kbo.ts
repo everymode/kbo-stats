@@ -42,6 +42,45 @@ async function fH(url: string, params?: Record<string, string>) {
   return cheerio.load(r.data);
 }
 
+// ASP.NET PostBack 페이지네이션 지원
+async function fHPages(url: string, params: Record<string, string>, totalPages: number) {
+  // 1단계: GET으로 page 1 + ViewState 가져오기
+  const r1 = await axios.get(url, { headers: HEADERS, params, timeout: 15000, responseType: "text" });
+  const $1 = cheerio.load(r1.data);
+  const results: cheerio.CheerioAPI[] = [$1];
+
+  if (totalPages <= 1) return results;
+
+  // ASP.NET 폼 필드 추출
+  const vs = $1('#__VIEWSTATE').val() as string || '';
+  const vsg = $1('#__VIEWSTATEGENERATOR').val() as string || '';
+  const ev = $1('#__EVENTVALIDATION').val() as string || '';
+
+  // 2단계: POST로 나머지 페이지들 순차 요청 (ViewState가 매번 바뀌므로)
+  let curVS = vs, curVSG = vsg, curEV = ev;
+  for (let p = 2; p <= totalPages; p++) {
+    const form = new URLSearchParams();
+    form.append('__VIEWSTATE', curVS);
+    form.append('__VIEWSTATEGENERATOR', curVSG);
+    form.append('__EVENTVALIDATION', curEV);
+    form.append('__EVENTTARGET', `ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo${p}`);
+    form.append('__EVENTARGUMENT', '');
+
+    const rN = await axios.post(url, form.toString(), {
+      headers: { ...HEADERS, 'Content-Type': 'application/x-www-form-urlencoded' },
+      params, timeout: 15000, responseType: "text",
+    });
+    const $N = cheerio.load(rN.data);
+    results.push($N);
+
+    // 다음 페이지를 위해 ViewState 갱신
+    curVS = $N('#__VIEWSTATE').val() as string || curVS;
+    curVSG = $N('#__VIEWSTATEGENERATOR').val() as string || curVSG;
+    curEV = $N('#__EVENTVALIDATION').val() as string || curEV;
+  }
+  return results;
+}
+
 function pR($: cheerio.CheerioAPI) {
   const rows: string[][] = [];
   $("table tr").each((_i, row) => {
@@ -107,17 +146,63 @@ async function getHittersCombined(season = "2026", page = 1) {
 
 async function getHittersAll(season = "2026") {
   const ck = `ha_${season}`; const c = gc(ck); if (c) return c;
-  const pages = await Promise.all([1,2,3,4,5].map(p => getHittersCombined(season, p)));
+  const url = `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`;
+  const pages$ = await fHPages(url, { leagueId: "1", seasonId: season, sort: "Game_Cn" }, 5);
   const seen = new Set<string>(); const data: any[] = [];
-  for (const pg of pages) for (const p of pg.data) { if (!seen.has(p.playerName)) { seen.add(p.playerName); data.push(p); } }
+  for (const $ of pages$) {
+    const rows = pR($);
+    for (const c of rows) {
+      const name = c[1] ?? "";
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      const t = ti(c[2] ?? "");
+      data.push({ rank: data.length + 1, playerName: name, teamName: c[2]??"", teamShort: t.short, colors: t.colors,
+        avg: c[3]??"0", games: parseInt(c[4])||0, pa: parseInt(c[5])||0, ab: parseInt(c[6])||0,
+        runs: parseInt(c[7])||0, hits: parseInt(c[8])||0, doubles: parseInt(c[9])||0, triples: parseInt(c[10])||0,
+        hr: parseInt(c[11])||0, tb: parseInt(c[12])||0, rbi: parseInt(c[13])||0, sac: parseInt(c[14])||0, sf: parseInt(c[15])||0 });
+    }
+  }
+  // OPS 데이터 병합
+  try {
+    const ops$ = await fHPages(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, { leagueId: "1", seasonId: season, sort: "Game_Cn" }, 5);
+    const om = new Map<string, any>();
+    for (const $ of ops$) { for (const c of pR($)) { const n = c[1]; if (n && !om.has(n)) om.set(n, { bb: parseInt(c[4])||0, ibb: parseInt(c[5])||0, hbp: parseInt(c[6])||0, so: parseInt(c[7])||0, gdp: parseInt(c[8])||0, slg: c[9]??"0", obp: c[10]??"0", ops: c[11]??"0" }); } }
+    for (const p of data) {
+      const o = om.get(p.playerName) || {};
+      p.bb = o.bb||0; p.ibb = o.ibb||0; p.hbp = o.hbp||0; p.so = o.so||0; p.gdp = o.gdp||0;
+      p.slg = o.slg||"0"; p.obp = o.obp||"0"; p.ops = o.ops||"0";
+      p.bbPct = p.pa > 0 ? ((o.bb||0)/p.pa*100).toFixed(1) : "0.0";
+      p.kPct = p.pa > 0 ? ((o.so||0)/p.pa*100).toFixed(1) : "0.0";
+      p.iso = o.slg && p.avg ? (parseFloat(o.slg)-parseFloat(p.avg)).toFixed(3) : "0.000";
+      const bd = p.ab-(o.so||0)-p.hr+p.sf;
+      p.babip = bd > 0 ? ((p.hits-p.hr)/bd).toFixed(3) : "0.000";
+    }
+  } catch {}
   const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
 }
 
 async function getPitchersAll(season = "2026") {
   const ck = `pa_${season}`; const c = gc(ck); if (c) return c;
-  const pages = await Promise.all([1,2,3,4,5].map(p => getPitchers(season, p)));
+  const url = `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`;
+  const pages$ = await fHPages(url, { leagueId: "1", seasonId: season, sort: "Game_Cn" }, 5);
   const seen = new Set<string>(); const data: any[] = [];
-  for (const pg of pages) for (const p of pg.data) { if (!seen.has(p.playerName)) { seen.add(p.playerName); data.push(p); } }
+  for (const $ of pages$) {
+    const rows = pR($);
+    for (const c of rows) {
+      const name = c[1] ?? "";
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      const t = ti(c[2] ?? "");
+      const ip = pI(c[10]||"0"); const so = parseInt(c[15])||0; const bb = parseInt(c[13])||0;
+      const hr = parseInt(c[12])||0; const hbp = parseInt(c[14])||0;
+      data.push({ rank: data.length + 1, playerName: name, teamName: c[2]??"", teamShort: t.short, colors: t.colors,
+        era: c[3]??"0.00", games: parseInt(c[4])||0, wins: parseInt(c[5])||0, losses: parseInt(c[6])||0,
+        saves: parseInt(c[7])||0, holds: parseInt(c[8])||0, wpct: c[9]??"0", ip: c[10]??"0",
+        hits: parseInt(c[11])||0, hr, bb, hbp, so, runs: parseInt(c[16])||0, er: parseInt(c[17])||0, whip: c[18]??"0.00",
+        k9: ip>0?(so/ip*9).toFixed(2):"0.00", bb9: ip>0?(bb/ip*9).toFixed(2):"0.00",
+        hr9: ip>0?(hr/ip*9).toFixed(2):"0.00", fip: ip>0?((13*hr+3*(bb+hbp)-2*so)/ip+3.10).toFixed(2):"0.00" });
+    }
+  }
   const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
 }
 async function getPitchers(season = "2026", page = 1) {
