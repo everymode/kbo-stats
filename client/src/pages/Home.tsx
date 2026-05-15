@@ -72,9 +72,13 @@ function LeaderCard({
   image: string;
 }) {
   return (
-    <div className="relative bg-card border border-border rounded-2xl overflow-hidden flex items-stretch">
+    <div className="relative bg-card border border-border rounded-2xl overflow-hidden min-h-[120px]">
+      {/* 이미지 - 카드 우측에 크게 */}
+      <div className="absolute right-0 top-0 bottom-0 w-[45%] pointer-events-none flex items-center justify-center opacity-40">
+        <img src={image} alt="" className="w-full h-full object-contain p-2" />
+      </div>
       {/* 텍스트 영역 */}
-      <div className="flex-1 p-5 relative z-10">
+      <div className="relative z-10 p-5">
         <div className="text-xs font-bold text-muted-foreground mb-2">{label}</div>
         <div className="flex items-baseline gap-2">
           <span className="font-display text-3xl text-foreground leading-none">{value}</span>
@@ -82,12 +86,6 @@ function LeaderCard({
         </div>
         <div className="text-sm text-muted-foreground mt-2 font-medium">
           {playerName} · {teamName}
-        </div>
-      </div>
-      {/* 이미지 영역 - 원형 프레임 */}
-      <div className="flex items-center justify-center w-28 shrink-0 pr-3">
-        <div className="w-[90px] h-[90px] rounded-full bg-secondary/50 border border-border/40 flex items-center justify-center overflow-hidden">
-          <img src={image} alt="" className="w-[70px] h-[70px] object-contain" />
         </div>
       </div>
     </div>
