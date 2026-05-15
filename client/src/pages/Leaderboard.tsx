@@ -63,7 +63,7 @@ function LeaderRow({
 
   return (
     <div
-      className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-accent/50 transition-colors animate-fade-in-up"
+      className="flex items-center gap-3 py-3.5 px-4 rounded-xl hover:bg-accent/60 transition-all animate-fade-in-up"
       style={{ animationDelay: `${index * 25}ms` }}
     >
       <div className="w-7 text-center font-stat text-sm text-muted-foreground shrink-0">
@@ -153,18 +153,20 @@ export default function Leaderboard() {
   const isSaberCategory = currentCat?.group === "세이버";
 
   return (
-    <div className="p-4 lg:p-6">
-      <div className="flex items-start justify-between mb-6">
+    <div className="p-4 lg:p-8">
+      <div className="flex items-start justify-between mb-8">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <BarChart3 size={20} className="text-primary" />
-            <h1 className="font-display text-3xl lg:text-4xl tracking-wider leading-none">리더보드</h1>
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <BarChart3 size={18} className="text-primary" />
+            </div>
+            <h1 className="font-display text-3xl lg:text-4xl leading-tight">리더보드</h1>
           </div>
-          <p className="text-muted-foreground text-sm">선수별 기록 순위 — 실시간 크롤링 데이터</p>
+          <p className="text-muted-foreground text-sm mt-1">선수별 기록 순위 — 실시간 크롤링 데이터</p>
         </div>
         <button
           onClick={loadData}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg bg-secondary/50 hover:bg-secondary"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-lg bg-card border border-border hover:border-primary/30 shadow-sm"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           {lastUpdated || "새로고침"}
@@ -172,17 +174,17 @@ export default function Leaderboard() {
       </div>
 
       {/* 필터 */}
-      <div className="bg-card border border-border rounded-xl p-4 mb-4">
-        <div className="flex flex-wrap gap-3 items-center mb-3">
+      <div className="bg-card border border-border rounded-2xl p-5 mb-5 shadow-sm">
+        <div className="flex flex-wrap gap-3 items-center mb-4">
           <Tabs value={tab} onValueChange={handleTabChange}>
-            <TabsList className="bg-secondary/50">
+            <TabsList className="bg-secondary">
               <TabsTrigger value="hitter">타자</TabsTrigger>
               <TabsTrigger value="pitcher">투수</TabsTrigger>
             </TabsList>
           </Tabs>
 
           <Select value={season} onValueChange={setSeason}>
-            <SelectTrigger className="w-28 h-9 bg-secondary/50 border-border/50 text-sm">
+            <SelectTrigger className="w-28 h-9 bg-secondary border-border text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -191,7 +193,7 @@ export default function Leaderboard() {
           </Select>
 
           <Select value={team} onValueChange={setTeam}>
-            <SelectTrigger className="w-28 h-9 bg-secondary/50 border-border/50 text-sm">
+            <SelectTrigger className="w-28 h-9 bg-secondary border-border text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -210,8 +212,8 @@ export default function Leaderboard() {
                 onClick={() => setCategory(c.value)}
                 className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                   category === c.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent border border-border"
                 }`}
               >
                 {c.label}
@@ -230,8 +232,8 @@ export default function Leaderboard() {
                 onClick={() => setCategory(c.value)}
                 className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                   category === c.value
-                    ? "bg-blue-500/80 text-white"
-                    : "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
+                    ? "bg-blue-600 text-white shadow-sm dark:bg-blue-500"
+                    : "bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
                 }`}
               >
                 {c.label}
@@ -242,19 +244,19 @@ export default function Leaderboard() {
       </div>
 
       {/* 리더보드 목록 */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-2 px-3">
-          <div className="w-7 text-xs font-semibold text-muted-foreground uppercase">#</div>
-          <div className="w-32 lg:w-40 text-xs font-semibold text-muted-foreground uppercase">선수</div>
-          <div className={`flex-1 text-xs font-semibold uppercase tracking-wider text-right pr-16 ${isSaberCategory ? "text-blue-400" : "text-muted-foreground"}`}>
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-3 px-4">
+          <div className="w-7 text-xs font-bold text-muted-foreground uppercase">#</div>
+          <div className="w-32 lg:w-40 text-xs font-bold text-muted-foreground uppercase">선수</div>
+          <div className={`flex-1 text-xs font-bold uppercase tracking-wider text-right pr-16 ${isSaberCategory ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
             {currentCat?.label}
-            {isLowerBetter && <span className="ml-1 text-muted-foreground">(낮을수록 좋음)</span>}
+            {isLowerBetter && <span className="ml-1 text-muted-foreground font-medium">(낮을수록 좋음)</span>}
           </div>
         </div>
 
         {loading ? (
           <div className="space-y-2 mt-2">
-            {Array.from({ length: 15 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+            {Array.from({ length: 15 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
           </div>
         ) : data.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">데이터가 없습니다.</div>

@@ -52,17 +52,19 @@ export default function Glossary() {
   );
 
   return (
-    <div className="p-4 lg:p-6">
-      <div className="flex items-center gap-2 mb-2">
-        <BookOpen size={20} className="text-primary" />
-        <h1 className="font-display text-3xl lg:text-4xl tracking-wider leading-none">기록 용어 사전</h1>
+    <div className="p-4 lg:p-8">
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+          <BookOpen size={18} className="text-primary" />
+        </div>
+        <h1 className="font-display text-3xl lg:text-4xl leading-tight">기록 용어 사전</h1>
       </div>
-      <p className="text-muted-foreground text-sm mb-6">야구 기록 용어와 세이버메트릭스 지표 설명</p>
+      <p className="text-muted-foreground text-sm mb-8">야구 기록 용어와 세이버메트릭스 지표 설명</p>
 
       {/* 필터 */}
       <div className="flex flex-wrap gap-3 items-center mb-5">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "basic" | "sabermetrics")}>
-          <TabsList className="bg-secondary/50">
+          <TabsList className="bg-secondary">
             <TabsTrigger value="basic">기본 용어</TabsTrigger>
             <TabsTrigger value="sabermetrics">세이버메트릭스</TabsTrigger>
           </TabsList>
@@ -71,7 +73,7 @@ export default function Glossary() {
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="pl-9 h-9 bg-secondary/50 border-border/50 text-sm"
+            className="pl-9 h-9 bg-secondary border-border text-sm"
             placeholder="용어 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -84,7 +86,7 @@ export default function Glossary() {
         {filtered.map((term, i) => (
           <div
             key={term.term}
-            className="bg-card border border-border rounded-xl p-4 animate-fade-in-up hover:border-primary/30 transition-colors"
+            className="bg-card border border-border rounded-2xl p-5 animate-fade-in-up hover:border-primary/30 hover:shadow-md transition-all"
             style={{ animationDelay: `${i * 30}ms` }}
           >
             <div className="flex items-start justify-between mb-2">
@@ -101,7 +103,7 @@ export default function Glossary() {
             </div>
             <div className="text-xs font-semibold text-muted-foreground mb-2">{term.full}</div>
             {term.formula !== "-" && (
-              <div className="font-stat text-xs bg-secondary/50 rounded px-2 py-1.5 mb-2 text-foreground/80">
+              <div className="font-stat text-xs bg-secondary rounded-lg px-2.5 py-2 mb-2.5 text-foreground/80">
                 {term.formula}
               </div>
             )}

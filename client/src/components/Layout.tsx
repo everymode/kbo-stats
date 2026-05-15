@@ -78,18 +78,18 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* ─── 사이드바 ─────────────────────────────────── */}
       <aside
-        className={`fixed left-0 top-0 z-50 h-full w-60 flex flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-out lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-50 h-full w-64 flex flex-col bg-card border-r border-border shadow-lg transition-transform duration-300 ease-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:static lg:flex`}
       >
         {/* 로고 */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/20">
-            <span className="text-primary font-display text-lg leading-none">K</span>
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-border">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-white shadow-md">
+            <span className="font-bold text-lg leading-none">K</span>
           </div>
           <div>
-            <div className="font-display text-xl text-foreground tracking-wider leading-none">KBO STATS</div>
-            <div className="text-xs text-muted-foreground mt-0.5">한국 프로야구 기록실</div>
+            <div className="font-display text-lg text-foreground leading-tight">KBO STATS</div>
+            <div className="text-[0.65rem] text-muted-foreground mt-0.5 font-medium">한국 프로야구 기록실</div>
           </div>
           <button
             className="ml-auto lg:hidden text-muted-foreground hover:text-foreground"
@@ -100,7 +100,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-1">
           {NAV_ITEMS.map((item, idx) => {
             const Icon = item.icon;
             const isActive = location === item.path;
@@ -112,10 +112,10 @@ export default function Layout({ children }: LayoutProps) {
                 style={{ animationDelay: `${idx * 40}ms` }}
                 onClick={() => setSidebarOpen(false)}
               >
-                <Icon size={17} className="shrink-0" />
+                <Icon size={18} className="shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium leading-none">{item.label}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</div>
+                  <div className="text-sm font-semibold leading-none">{item.label}</div>
+                  <div className="text-[0.65rem] text-muted-foreground mt-1 truncate">{item.description}</div>
                 </div>
                 {isActive && <ChevronRight size={14} className="text-primary shrink-0" />}
               </Link>
@@ -124,8 +124,8 @@ export default function Layout({ children }: LayoutProps) {
         </nav>
 
         {/* 하단 */}
-        <div className="px-3 py-4 border-t border-sidebar-border">
-          <div className="text-xs text-muted-foreground text-center">
+        <div className="px-4 py-4 border-t border-border">
+          <div className="text-[0.65rem] text-muted-foreground text-center font-medium">
             데이터 출처: KBO 공식 사이트
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* ─── 메인 영역 ────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* 상단 바 */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-background/80 backdrop-blur-md border-b border-border">
+        <header className="sticky top-0 z-30 flex items-center gap-3 px-5 py-3.5 bg-card/80 backdrop-blur-xl border-b border-border shadow-sm">
           {/* 모바일 메뉴 버튼 */}
           <button
             className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
@@ -147,7 +147,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="relative flex-1 max-w-md">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
-              className="pl-9 bg-secondary/50 border-border/50 text-sm h-9 focus:border-primary/50"
+              className="pl-9 bg-secondary border-border text-sm h-9 focus:border-primary rounded-xl"
               placeholder="선수명, 팀명으로 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -187,7 +187,7 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* 다크/라이트 토글 */}
           <button
-            className="ml-auto flex items-center justify-center w-8 h-8 rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            className="ml-auto flex items-center justify-center w-9 h-9 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent border border-border transition-all"
             onClick={toggleTheme}
             title={theme === "dark" ? "라이트 모드" : "다크 모드"}
           >

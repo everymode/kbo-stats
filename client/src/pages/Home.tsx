@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { kboApi, TeamRank, Hitter, Pitcher } from "@/lib/kboApi";
 import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingUp, Trophy, Zap, Target, RefreshCw } from "lucide-react";
+import { ArrowRight, TrendingUp, Trophy, Zap, Target, RefreshCw, Medal } from "lucide-react";
 
 // ─── 숫자 카운트업 훅 ──────────────────────────────────────
 function useCountUp(target: number, duration = 800) {
@@ -23,6 +23,41 @@ function useCountUp(target: number, duration = 800) {
   return value;
 }
 
+// ─── 순위 메달 뱃지 ──────────────────────────────────────
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 font-bold text-xs shadow-sm">🥇</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 font-bold text-xs shadow-sm">🥈</span>;
+  if (rank === 3) return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400 font-bold text-xs shadow-sm">🥉</span>;
+  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-secondary text-muted-foreground font-bold text-xs">{rank}</span>;
+}
+
+// ─── 최근 10경기 시각화 ──────────────────────────────────
+function RecentTenVisual({ recentTen }: { recentTen: string }) {
+  if (!recentTen) return null;
+  const wMatch = recentTen.match(/(\d+)승/);
+  const dMatch = recentTen.match(/(\d+)무/);
+  const lMatch = recentTen.match(/(\d+)패/);
+  const w = parseInt(wMatch?.[1] ?? "0");
+  const d = parseInt(dMatch?.[1] ?? "0");
+  const l = parseInt(lMatch?.[1] ?? "0");
+  const boxes: string[] = [];
+  for (let i = 0; i < w; i++) boxes.push("w");
+  for (let i = 0; i < d; i++) boxes.push("d");
+  for (let i = 0; i < l; i++) boxes.push("l");
+  return (
+    <div className="flex gap-0.5">
+      {boxes.map((b, i) => (
+        <div
+          key={i}
+          className={`w-2 h-2 rounded-sm ${
+            b === "w" ? "bg-green-500" : b === "d" ? "bg-yellow-400" : "bg-red-400"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── 팀 순위 카드 ─────────────────────────────────────────
 function TeamRankCard({ team, index }: { team: TeamRank; index: number }) {
   const wins = useCountUp(team.wins, 600 + index * 80);
@@ -30,32 +65,20 @@ function TeamRankCard({ team, index }: { team: TeamRank; index: number }) {
 
   return (
     <div
-      className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors animate-fade-in-up"
+      className="flex items-center gap-3 py-3.5 px-4 rounded-xl hover:bg-accent/60 transition-all animate-fade-in-up"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* 순위 */}
-      <div
-        className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shrink-0"
-        style={{
-          backgroundColor: index < 3 ? team.colors.primary + "33" : "transparent",
-          color: index < 3 ? team.colors.primary : "var(--muted-foreground)",
-          border: index < 3 ? `1px solid ${team.colors.primary}44` : "1px solid transparent",
-        }}
-      >
-        {team.rank}
-      </div>
+      {/* 순위 메달 */}
+      <RankBadge rank={team.rank} />
 
-      {/* 팀명 */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ backgroundColor: team.colors.primary }}
-          />
-          <span className="text-sm font-semibold truncate">{team.teamName}</span>
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5 font-stat">
-          {team.recentTen || ""}
+      {/* 팀 아바타 + 이름 */}
+      <div className="flex-1 min-w-0 flex items-center gap-2.5">
+        <TeamBadge teamName={team.teamName} size="md" />
+        <div>
+          <span className="text-sm font-semibold text-foreground">{team.teamFull}</span>
+          <div className="mt-0.5">
+            <RecentTenVisual recentTen={team.recentTen} />
+          </div>
         </div>
       </div>
 
@@ -94,17 +117,17 @@ function LeaderCard({
       className="stat-card animate-fade-in-up"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-md bg-primary/15 flex items-center justify-center">
-          <Icon size={14} className="text-primary" />
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Icon size={16} className="text-primary" />
         </div>
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
-      <div className="font-display text-3xl text-foreground leading-none mb-1">
+      <div className="font-display text-3xl text-foreground leading-none mb-1.5">
         {value}
-        {unit && <span className="text-lg text-muted-foreground ml-1">{unit}</span>}
+        {unit && <span className="text-base font-semibold text-muted-foreground ml-1.5">{unit}</span>}
       </div>
-      <div className="text-sm text-muted-foreground">{player}</div>
+      <div className="text-sm text-muted-foreground font-medium">{player}</div>
     </div>
   );
 }
@@ -156,11 +179,11 @@ export default function Home() {
   const topSO = (pitchers.slice(5, 10) as Pitcher[]).sort((a, b) => (b.so || 0) - (a.so || 0))[0] || pitchers[5] as Pitcher | undefined;
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="p-4 lg:p-8 space-y-8">
       {/* ─── 헤더 ─────────────────────────────────────── */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display text-3xl lg:text-4xl text-foreground tracking-wider leading-none">
+          <h1 className="font-display text-3xl lg:text-4xl text-foreground leading-tight">
             오늘의 KBO
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -169,7 +192,7 @@ export default function Home() {
         </div>
         <button
           onClick={loadData}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg bg-secondary/50 hover:bg-secondary"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-lg bg-card border border-border hover:border-primary/30 shadow-sm"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           {lastUpdated ? `${lastUpdated} 업데이트` : "새로고침"}
@@ -183,16 +206,18 @@ export default function Home() {
       )}
 
       {/* ─── 메인 그리드 ──────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* 팀 순위 (2/3 너비) */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Trophy size={16} className="text-primary" />
-              <h2 className="font-semibold text-sm">2026 시즌 팀 순위</h2>
+        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Trophy size={16} className="text-primary" />
+              </div>
+              <h2 className="font-bold text-base">2026 시즌 팀 순위</h2>
             </div>
-            <Link href="/teams" className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+            <Link href="/teams" className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
               전체 보기 <ArrowRight size={12} />
             </Link>
           </div>
@@ -200,11 +225,11 @@ export default function Home() {
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 10 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                <Skeleton key={i} className="h-12 w-full rounded-xl" />
               ))}
             </div>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {teamRank.map((team, i) => (
                 <TeamRankCard key={team.teamName} team={team} index={i} />
               ))}
@@ -213,10 +238,12 @@ export default function Home() {
         </div>
 
         {/* 오늘의 리더 (1/3 너비) */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Zap size={16} className="text-primary" />
-            <h2 className="font-semibold text-sm">오늘의 리더</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Zap size={16} className="text-primary" />
+            </div>
+            <h2 className="font-bold text-base">오늘의 리더</h2>
           </div>
 
           {loading ? (
@@ -273,13 +300,15 @@ export default function Home() {
       </div>
 
       {/* ─── 타자 TOP 5 ────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={16} className="text-primary" />
-            <h2 className="font-semibold text-sm">타율 TOP 5</h2>
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <TrendingUp size={16} className="text-green-600 dark:text-green-400" />
+            </div>
+            <h2 className="font-bold text-base">타율 TOP 5</h2>
           </div>
-          <Link href="/leaderboard" className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+          <Link href="/leaderboard" className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
             리더보드 <ArrowRight size={12} />
           </Link>
         </div>
@@ -306,7 +335,7 @@ export default function Home() {
                 {hitters.map((h, i) => (
                   <tr key={i} className="animate-fade-in-up" style={{ animationDelay: `${i * 60}ms` }}>
                     <td>
-                      <span className="font-stat text-muted-foreground">{i + 1}</span>
+                      <RankBadge rank={i + 1} />
                     </td>
                     <td>
                       <Link href={`/players/${encodeURIComponent(h.playerName)}`} className="font-semibold hover:text-primary transition-colors">
@@ -314,7 +343,7 @@ export default function Home() {
                       </Link>
                     </td>
                     <td><TeamBadge teamName={h.teamName} /></td>
-                    <td className="text-right font-stat font-semibold text-primary">{h.avg}</td>
+                    <td className="text-right font-stat font-bold text-primary">{h.avg}</td>
                     <td className="text-right font-stat">{h.hr ?? "-"}</td>
                     <td className="text-right font-stat">{h.rbi ?? "-"}</td>
                     <td className="text-right font-stat">{h.hits ?? "-"}</td>
@@ -327,13 +356,15 @@ export default function Home() {
       </div>
 
       {/* ─── 투수 TOP 5 ────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Zap size={16} className="text-primary" />
-            <h2 className="font-semibold text-sm">평균자책점 TOP 5</h2>
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <Zap size={16} className="text-red-600 dark:text-red-400" />
+            </div>
+            <h2 className="font-bold text-base">평균자책점 TOP 5</h2>
           </div>
-          <Link href="/leaderboard?tab=pitcher" className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+          <Link href="/leaderboard?tab=pitcher" className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
             리더보드 <ArrowRight size={12} />
           </Link>
         </div>
@@ -360,14 +391,14 @@ export default function Home() {
               <tbody>
                 {pitchers.map((p, i) => (
                   <tr key={i} className="animate-fade-in-up" style={{ animationDelay: `${i * 60}ms` }}>
-                    <td><span className="font-stat text-muted-foreground">{i + 1}</span></td>
+                    <td><RankBadge rank={i + 1} /></td>
                     <td>
                       <Link href={`/players/${encodeURIComponent(p.playerName)}`} className="font-semibold hover:text-primary transition-colors">
                         {p.playerName}
                       </Link>
                     </td>
                     <td><TeamBadge teamName={p.teamName} /></td>
-                    <td className="text-right font-stat font-semibold text-primary">{p.era}</td>
+                    <td className="text-right font-stat font-bold text-primary">{p.era}</td>
                     <td className="text-right font-stat">{p.wins}</td>
                     <td className="text-right font-stat">{p.losses}</td>
                     <td className="text-right font-stat">{p.so}</td>
@@ -399,10 +430,10 @@ export default function Home() {
             선수·팀·리더보드를 한눈에 확인하세요.
           </div>
           <div className="flex gap-3 mt-4">
-            <Link href="/leaderboard" className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
+            <Link href="/leaderboard" className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors shadow-md">
               리더보드 보기 <ArrowRight size={14} />
             </Link>
-            <Link href="/teams" className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-foreground rounded-lg text-sm font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm">
+            <Link href="/teams" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/80 dark:bg-white/10 text-foreground rounded-xl text-sm font-bold hover:bg-white dark:hover:bg-white/15 transition-colors backdrop-blur-sm shadow-sm border border-border">
               팀 순위
             </Link>
           </div>

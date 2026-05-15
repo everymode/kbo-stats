@@ -60,7 +60,7 @@ function PlayerRow({ player, type, index, visibleCols }: {
   return (
     <Link href={`/players/${encodeURIComponent(player.playerName)}`}>
       <div
-        className="flex items-center gap-2 py-2.5 px-3 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer animate-fade-in-up border border-transparent hover:border-border"
+        className="flex items-center gap-2 py-3.5 px-4 rounded-xl hover:bg-accent/60 transition-all cursor-pointer animate-fade-in-up border border-transparent hover:border-border"
         style={{ animationDelay: `${index * 20}ms` }}
       >
         <div className="w-7 text-center font-stat text-xs text-muted-foreground shrink-0">
@@ -151,24 +151,26 @@ export default function Players() {
   const visibleCols = showSaber ? allCols : basicCols;
 
   return (
-    <div className="p-4 lg:p-6">
-      <div className="flex items-center gap-2 mb-2">
-        <Users size={20} className="text-primary" />
-        <h1 className="font-display text-3xl lg:text-4xl tracking-wider leading-none">선수</h1>
+    <div className="p-4 lg:p-8">
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Users size={18} className="text-primary" />
+        </div>
+        <h1 className="font-display text-3xl lg:text-4xl leading-tight">선수</h1>
       </div>
-      <p className="text-muted-foreground text-sm mb-6">2026 KBO 리그 — 선수 기록 조회</p>
+      <p className="text-muted-foreground text-sm mb-8">2026 KBO 리그 — 선수 기록 조회</p>
 
       {/* 필터 */}
-      <div className="bg-card border border-border rounded-xl p-4 mb-4 flex flex-wrap gap-3 items-center">
+      <div className="bg-card border border-border rounded-2xl p-5 mb-5 flex flex-wrap gap-3 items-center shadow-sm">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "hitter" | "pitcher")}>
-          <TabsList className="bg-secondary/50">
+          <TabsList className="bg-secondary">
             <TabsTrigger value="hitter">타자</TabsTrigger>
             <TabsTrigger value="pitcher">투수</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <Select value={team} onValueChange={setTeam}>
-          <SelectTrigger className="w-28 h-9 bg-secondary/50 border-border/50 text-sm">
+          <SelectTrigger className="w-28 h-9 bg-secondary border-border text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -181,7 +183,7 @@ export default function Players() {
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="pl-9 h-9 bg-secondary/50 border-border/50 text-sm"
+            className="pl-9 h-9 bg-secondary border-border text-sm"
             placeholder="선수명 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -191,24 +193,24 @@ export default function Players() {
         {/* 세이버메트릭스 토글 */}
         <button
           onClick={() => setShowSaber(!showSaber)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
             showSaber
-              ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
-              : "bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent"
+              ? "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent border border-border"
           }`}
         >
           세이버메트릭스 {showSaber ? "ON" : "OFF"}
         </button>
 
-        <div className="text-xs text-muted-foreground ml-auto">{filtered.length}명</div>
+        <div className="text-xs text-muted-foreground font-medium ml-auto">{filtered.length}명</div>
       </div>
 
       {/* 테이블 */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         {/* 헤더 */}
-        <div className="flex items-center gap-2 py-2 px-3 border-b border-border bg-secondary/20">
-          <div className="w-7 text-xs font-semibold text-muted-foreground uppercase">#</div>
-          <div className="w-28 text-xs font-semibold text-muted-foreground uppercase">선수</div>
+        <div className="flex items-center gap-2 py-3 px-4 border-b-2 border-border bg-secondary/30">
+          <div className="w-7 text-xs font-bold text-muted-foreground uppercase">#</div>
+          <div className="w-28 text-xs font-bold text-muted-foreground uppercase">선수</div>
           <div className="flex-1 grid gap-1 text-right" style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}>
             {visibleCols.map((col) => {
               const isSaber = SABER_HITTER_KEYS.has(col.key) || SABER_PITCHER_KEYS.has(col.key);
