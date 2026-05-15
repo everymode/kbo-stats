@@ -63,7 +63,7 @@ function LeaderRow({
 
   return (
     <div
-      className="flex items-center gap-3 py-3.5 px-4 rounded-xl hover:bg-accent/60 transition-all animate-fade-in-up"
+      className="flex items-center gap-3 py-2.5 px-4 rounded-lg hover:bg-accent/60 transition-all animate-fade-in-up"
       style={{ animationDelay: `${index * 25}ms` }}
     >
       <div className="w-7 text-center font-stat text-sm text-muted-foreground shrink-0">
@@ -74,14 +74,14 @@ function LeaderRow({
         ) : index + 1}
       </div>
 
-      <div className="w-32 lg:w-40 shrink-0">
+      <div className="w-36 lg:w-44 shrink-0 flex items-center gap-2">
+        <TeamBadge teamName={item.teamName} size="sm" />
         <Link
           href={`/players/${encodeURIComponent(item.playerName)}`}
-          className="text-sm font-semibold hover:text-primary transition-colors block truncate"
+          className="text-sm font-semibold hover:text-primary transition-colors truncate"
         >
           {item.playerName}
         </Link>
-        <TeamBadge teamName={item.teamName} size="sm" />
       </div>
 
       <div className="flex-1 flex items-center gap-2 min-w-0">

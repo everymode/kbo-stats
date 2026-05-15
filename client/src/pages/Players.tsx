@@ -60,15 +60,15 @@ function PlayerRow({ player, type, index, visibleCols }: {
   return (
     <Link href={`/players/${encodeURIComponent(player.playerName)}`}>
       <div
-        className="flex items-center gap-2 py-3.5 px-4 rounded-xl hover:bg-accent/60 transition-all cursor-pointer animate-fade-in-up border border-transparent hover:border-border"
+        className="flex items-center gap-2 py-2.5 px-4 rounded-lg hover:bg-accent/60 transition-all cursor-pointer animate-fade-in-up border border-transparent hover:border-border"
         style={{ animationDelay: `${index * 20}ms` }}
       >
         <div className="w-7 text-center font-stat text-xs text-muted-foreground shrink-0">
           {player.rank}
         </div>
-        <div className="w-28 shrink-0">
-          <div className="font-semibold text-sm hover:text-primary transition-colors truncate">{player.playerName}</div>
+        <div className="w-32 shrink-0 flex items-center gap-2">
           <TeamBadge teamName={player.teamName} size="sm" />
+          <span className="font-semibold text-sm hover:text-primary transition-colors truncate">{player.playerName}</span>
         </div>
         <div className="flex-1 grid gap-1 text-right" style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}>
           {visibleCols.map((col, ci) => {
