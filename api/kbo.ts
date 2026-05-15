@@ -105,6 +105,28 @@ async function getHittersCombined(season = "2026", page = 1) {
   const result = { data, season, page, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
 }
 
+async function getHittersAll(season = "2026") {
+  const ck = `ha_${season}`; const c = gc(ck); if (c) return c;
+  const pages = await Promise.all([1,2,3,4,5].map(p => getHittersCombined(season, p)));
+  const seen = new Set<string>(); const data: any[] = [];
+  for (const pg of pages) for (const p of pg.data) { if (!seen.has(p.playerName)) { seen.add(p.playerName); data.push(p); } }
+  const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
+}
+
+async function getPitchersAll(season = "2026") {
+  const ck = `pa_${season}`; const c = gc(ck); if (c) return c;
+  const pages = await Promise.all([1,2,3,4,5].map(p => getPitchers(season, p)));
+  const seen = new Set<string>(); const data: any[] = [];
+  for (const pg of pages) for (const p of pg.data) { if (!seen.has(p.playerName)) { seen.add(p.playerName); data.push(p); } }
+  const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
+}
+    const babip = bd > 0 ? ((p.hits-p.hr)/bd).toFixed(3) : "0.000";
+    return { ...p, bb: o.bb||0, ibb: o.ibb||0, hbp: o.hbp||0, so: o.so||0, gdp: o.gdp||0,
+      slg: o.slg||"0", obp: o.obp||"0", ops: o.ops||"0", bbPct, kPct, iso, babip };
+  });
+  const result = { data, season, page, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
+}
+
 async function getPitchers(season = "2026", page = 1) {
   const ck = `p_${season}_${page}`; const c = gc(ck); if (c) return c;
   const $ = await fH(`${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`, { leagueId: "1", seasonId: season, currentPage: String(page) });
@@ -136,7 +158,7 @@ async function getLeaderboard(cat: string, season = "2026", team?: string, limit
 }
 
 async function searchPlayers(q: string, season = "2026") {
-  const [hr,pr] = await Promise.all([getHittersCombined(season),getPitchers(season)]);
+  const [hr,pr] = await Promise.all([getHittersAll(season),getPitchersAll(season)]);
   const r: any[] = [];
   for (const p of hr.data) if ((p as any).playerName?.includes(q)||(p as any).teamName?.includes(q)) r.push({...p,type:"hitter"});
   for (const p of pr.data) if ((p as any).playerName?.includes(q)||(p as any).teamName?.includes(q)) r.push({...p,type:"pitcher"});
@@ -157,8 +179,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case "team-rank": return res.json(await getTeamRank());
       case "hitters": return res.json(await getHitters(String(req.query.season??"2026"), parseInt(String(req.query.page??"1"))));
       case "hitters-combined": return res.json(await getHittersCombined(String(req.query.season??"2026"), parseInt(String(req.query.page??"1"))));
+      case "hitters-all": return res.json(await getHittersAll(String(req.query.season??"2026")));
       case "hitters-ops": return res.json(await getHittersOps(String(req.query.season??"2026"), parseInt(String(req.query.page??"1"))));
       case "pitchers": return res.json(await getPitchers(String(req.query.season??"2026"), parseInt(String(req.query.page??"1"))));
+      case "pitchers-all": return res.json(await getPitchersAll(String(req.query.season??"2026")));
       case "leaderboard": return res.json(await getLeaderboard(String(req.query.category??"avg"), String(req.query.season??"2026"), req.query.team?String(req.query.team):undefined, parseInt(String(req.query.limit??"30"))));
       case "search": { const q = String(req.query.q??""); if (!q) return res.json({data:[],query:""}); return res.json(await searchPlayers(q, String(req.query.season??"2026"))); }
       default: return res.status(404).json({ error: "Unknown action", action });

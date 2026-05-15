@@ -94,6 +94,7 @@ export default function Players() {
   const [team, setTeam] = useState("전체");
   const [search, setSearch] = useState("");
   const [showSaber, setShowSaber] = useState(false);
+  const [qualifiedOnly, setQualifiedOnly] = useState(false);
   const [data, setData] = useState<(Hitter | Pitcher)[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -115,10 +116,10 @@ export default function Players() {
     setSortDir("desc");
     try {
       if (tab === "hitter") {
-        const res = await kboApi.getHittersCombined("2026", 1);
+        const res = await kboApi.getHittersAll("2026");
         setData(res.data);
       } else {
-        const res = await kboApi.getPitchers("2026", 1);
+        const res = await kboApi.getPitchersAll("2026");
         setData(res.data);
       }
     } catch {
@@ -133,7 +134,18 @@ export default function Players() {
   const filtered = data.filter((p) => {
     const matchTeam = team === "전체" || p.teamName.includes(team) || (p as any).teamShort?.includes(team);
     const matchSearch = !search || p.playerName.includes(search) || p.teamName.includes(search);
-    return matchTeam && matchSearch;
+    // 규정타석/규정이닝 필터 (KBO: 타석=팀경기수×3.1, 이닝=팀경기수×1.0, 대략 40경기 기준)
+    let matchQualified = true;
+    if (qualifiedOnly) {
+      if (tab === "hitter") {
+        matchQualified = ((p as Hitter).pa || 0) >= 124; // ~40경기 × 3.1
+      } else {
+        const ipStr = (p as Pitcher).ip || "0";
+        const ipNum = parseFloat(ipStr.split(" ")[0]) || 0;
+        matchQualified = ipNum >= 40; // ~40경기 × 1.0
+      }
+    }
+    return matchTeam && matchSearch && matchQualified;
   });
 
   const sorted = sortKey
@@ -200,6 +212,18 @@ export default function Players() {
           }`}
         >
           세이버메트릭스 {showSaber ? "ON" : "OFF"}
+        </button>
+
+        {/* 규정타석/규정이닝 토글 */}
+        <button
+          onClick={() => setQualifiedOnly(!qualifiedOnly)}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            qualifiedOnly
+              ? "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent border border-border"
+          }`}
+        >
+          {tab === "hitter" ? "규정타석" : "규정이닝"} {qualifiedOnly ? "ON" : "OFF"}
         </button>
 
         <div className="text-xs text-muted-foreground font-medium ml-auto">{filtered.length}명</div>

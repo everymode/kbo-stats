@@ -153,9 +153,17 @@ export const kboApi = {
   getHittersCombined: (season = "2026", page = 1) =>
     fetchApi<ApiResponse<Hitter>>("hitters-combined", { season, page: String(page) }),
 
+  /** 타자 전체 (5페이지, ~150명) */
+  getHittersAll: (season = "2026") =>
+    fetchApi<ApiResponse<Hitter>>("hitters-all", { season }),
+
   /** 투수 기록 */
   getPitchers: (season = "2026", page = 1) =>
     fetchApi<ApiResponse<Pitcher>>("pitchers", { season, page: String(page) }),
+
+  /** 투수 전체 (5페이지, ~150명) */
+  getPitchersAll: (season = "2026") =>
+    fetchApi<ApiResponse<Pitcher>>("pitchers-all", { season }),
 
   /** 경기 일정/결과 */
   getSchedule: (gameDate?: string) =>
