@@ -120,13 +120,6 @@ async function getPitchersAll(season = "2026") {
   for (const pg of pages) for (const p of pg.data) { if (!seen.has(p.playerName)) { seen.add(p.playerName); data.push(p); } }
   const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
 }
-    const babip = bd > 0 ? ((p.hits-p.hr)/bd).toFixed(3) : "0.000";
-    return { ...p, bb: o.bb||0, ibb: o.ibb||0, hbp: o.hbp||0, so: o.so||0, gdp: o.gdp||0,
-      slg: o.slg||"0", obp: o.obp||"0", ops: o.ops||"0", bbPct, kPct, iso, babip };
-  });
-  const result = { data, season, page, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
-}
-
 async function getPitchers(season = "2026", page = 1) {
   const ck = `p_${season}_${page}`; const c = gc(ck); if (c) return c;
   const $ = await fH(`${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`, { leagueId: "1", seasonId: season, currentPage: String(page) });
