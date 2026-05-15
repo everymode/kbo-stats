@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { kboApi, TeamRank, TEAM_FULL_NAMES } from "@/lib/kboApi";
+import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
 
