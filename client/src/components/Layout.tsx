@@ -86,14 +86,11 @@ export default function Layout({ children }: LayoutProps) {
       >
         {/* 로고 */}
         <div className="flex flex-col items-center py-6 border-b border-white/10">
-          {/* 야구공 아이콘 */}
-          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-3">
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <circle cx="18" cy="18" r="16" stroke="#e8e0d4" strokeWidth="2" fill="none"/>
-              <path d="M10 6C12 10 12 14 10 18C8 22 8 26 10 30" stroke="#c44" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-              <path d="M26 6C24 10 24 14 26 18C28 22 28 26 26 30" stroke="#c44" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-            </svg>
-          </div>
+          <img
+            src="/sidebar/sidebar.png"
+            alt="KBO Records"
+            className="w-20 h-20 object-contain mb-2 drop-shadow-lg"
+          />
           <div className="text-white font-bold text-base tracking-wide">KBO Records</div>
           <div className="text-white/50 text-[0.65rem] mt-0.5">한국 프로야구 기록실</div>
           <button

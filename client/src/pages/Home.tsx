@@ -55,28 +55,6 @@ function RecentTenBlocks({ recentTen }: { recentTen: string }) {
   );
 }
 
-// ─── 선수 실루엣 SVG ──────────────────────────────────────
-function BatterSilhouette({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 120" className={className} fill="currentColor" opacity="0.12">
-      <ellipse cx="40" cy="25" rx="10" ry="12" />
-      <path d="M30 38 C25 42 22 55 24 70 L28 70 L30 55 L35 50 L35 90 L30 115 L35 115 L42 90 L48 115 L53 115 L48 90 L48 50 L53 55 L55 70 L59 70 C61 55 58 42 53 38 Z" />
-      <path d="M53 42 L70 20 L72 22 L56 45 Z" />
-    </svg>
-  );
-}
-
-function PitcherSilhouette({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 120" className={className} fill="currentColor" opacity="0.12">
-      <ellipse cx="40" cy="22" rx="9" ry="11" />
-      <path d="M32 34 C27 38 25 50 26 62 L30 62 L32 50 L36 46 L36 85 L31 112 L36 112 L42 85 L48 112 L53 112 L48 85 L48 46 L52 50 L54 62 L58 62 C59 50 57 38 52 34 Z" />
-      <path d="M28 38 L12 28 L11 31 L26 42 Z" />
-      <circle cx="10" cy="27" r="3" />
-    </svg>
-  );
-}
-
 // ─── 리더 카드 ────────────────────────────────────────────
 function LeaderCard({
   label,
@@ -84,19 +62,19 @@ function LeaderCard({
   teamName,
   value,
   unit,
-  type,
+  image,
 }: {
   label: string;
   playerName: string;
   teamName: string;
   value: string;
   unit: string;
-  type: "batter" | "pitcher";
+  image: string;
 }) {
   return (
     <div className="relative bg-card border border-border rounded-2xl p-5 overflow-hidden">
-      <div className="absolute right-2 top-2 bottom-2 w-20 pointer-events-none text-foreground">
-        {type === "batter" ? <BatterSilhouette className="w-full h-full" /> : <PitcherSilhouette className="w-full h-full" />}
+      <div className="absolute right-1 top-1/2 -translate-y-1/2 w-24 h-24 pointer-events-none opacity-20">
+        <img src={image} alt="" className="w-full h-full object-contain" />
       </div>
       <div className="relative z-10">
         <div className="text-xs font-bold text-muted-foreground mb-2">{label}</div>
@@ -267,7 +245,7 @@ export default function Home() {
                   teamName={topAvg.teamName}
                   value={topAvg.avg}
                   unit="AVG"
-                  type="batter"
+                  image="/leaderboard/AVG.png"
                 />
               )}
               {topHR && (
@@ -277,7 +255,7 @@ export default function Home() {
                   teamName={topHR.teamName}
                   value={String(topHR.hr)}
                   unit="HR"
-                  type="batter"
+                  image="/leaderboard/Homerun.png"
                 />
               )}
               {topERA && (
@@ -287,7 +265,7 @@ export default function Home() {
                   teamName={topERA.teamName}
                   value={topERA.era}
                   unit="ERA"
-                  type="pitcher"
+                  image="/leaderboard/ERA.png"
                 />
               )}
               {topSO && (
@@ -297,7 +275,7 @@ export default function Home() {
                   teamName={topSO.teamName}
                   value={String(topSO.so)}
                   unit="K"
-                  type="pitcher"
+                  image="/leaderboard/StrikeOut.png"
                 />
               )}
             </div>
