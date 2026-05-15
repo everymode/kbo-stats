@@ -77,21 +77,37 @@ async function fHSeason(url: string, season: string) {
   return cheerio.load(r2.data);
 }
 
-// ASP.NET PostBack 페이지네이션 (쿠키 기반 세션 유지)
-async function fHPages(url: string, params: Record<string, string>, maxPages: number) {
+// ASP.NET PostBack 페이지네이션 (쿠키 기반 세션 유지, 시즌 변경 지원)
+async function fHPages(url: string, params: Record<string, string>, maxPages: number, season?: string) {
   const fullUrl = url + '?' + new URLSearchParams(params).toString();
   const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+  const currentYear = new Date().getFullYear().toString();
 
   // 1단계: GET page 1 + 쿠키/폼 추출
   const r1 = await axios.get(fullUrl, { headers: { ...HEADERS, 'User-Agent': UA }, timeout: 15000, responseType: "text" });
-  const $1 = cheerio.load(r1.data);
-  const results: cheerio.CheerioAPI[] = [$1];
-  if (maxPages <= 1) return results;
-
+  let $cur = cheerio.load(r1.data);
   const cookies = (r1.headers['set-cookie'] || []).map((c: string) => c.split(';')[0]).join('; ');
 
+  // 1.5단계: 과거 시즌이면 시즌 변경 PostBack 후 새 page 1 획득
+  if (season && season !== currentYear) {
+    const fd = extractForm($cur);
+    fd['ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason'] = season;
+    fd['__EVENTTARGET'] = 'ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason';
+    fd['__EVENTARGUMENT'] = '';
+    const form = new URLSearchParams();
+    for (const [k, v] of Object.entries(fd)) form.append(k, v);
+    const rS = await axios.post(fullUrl, form.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA, 'Referer': fullUrl, 'Cookie': cookies },
+      timeout: 15000, responseType: 'text', validateStatus: (s: number) => s < 400,
+    });
+    $cur = cheerio.load(rS.data);
+  }
+
+  const results: cheerio.CheerioAPI[] = [$cur];
+  if (maxPages <= 1) return results;
+
   // 2단계: POST로 나머지 페이지 순차 요청
-  let curForm = extractForm($1);
+  let curForm = extractForm($cur);
   for (let p = 2; p <= maxPages; p++) {
     curForm['__EVENTTARGET'] = `ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo${p}`;
     curForm['__EVENTARGUMENT'] = '';
@@ -179,7 +195,7 @@ async function getHittersCombined(season = "2026", page = 1) {
 async function getHittersAll(season = "2026") {
   const ck = `ha_${season}`; const c = gc(ck); if (c) return c;
   const url = `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`;
-  const pages$ = await fHPages(url, { leagueId: "1", seasonId: season, sort: "Game_Cn" }, 5);
+  const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 5, season);
   const seen = new Set<string>(); const data: any[] = [];
   for (const $ of pages$) {
     const rows = pR($);
@@ -196,7 +212,7 @@ async function getHittersAll(season = "2026") {
   }
   // OPS 데이터 병합
   try {
-    const ops$ = await fHPages(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, { leagueId: "1", seasonId: season, sort: "Game_Cn" }, 5);
+    const ops$ = await fHPages(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, { leagueId: "1", sort: "Game_Cn" }, 5, season);
     const om = new Map<string, any>();
     for (const $ of ops$) { for (const c of pR($)) { const n = c[1]; if (n && !om.has(n)) om.set(n, { bb: parseInt(c[4])||0, ibb: parseInt(c[5])||0, hbp: parseInt(c[6])||0, so: parseInt(c[7])||0, gdp: parseInt(c[8])||0, slg: c[9]??"0", obp: c[10]??"0", ops: c[11]??"0" }); } }
     for (const p of data) {
@@ -216,7 +232,7 @@ async function getHittersAll(season = "2026") {
 async function getPitchersAll(season = "2026") {
   const ck = `pa_${season}`; const c = gc(ck); if (c) return c;
   const url = `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`;
-  const pages$ = await fHPages(url, { leagueId: "1", seasonId: season, sort: "Game_Cn" }, 5);
+  const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 5, season);
   const seen = new Set<string>(); const data: any[] = [];
   for (const $ of pages$) {
     const rows = pR($);
@@ -256,11 +272,9 @@ async function getPitchers(season = "2026", page = 1) {
 
 async function getLeaderboard(cat: string, season = "2026", team?: string, limit = 30) {
   const ps = new Set(["era","wins","so","whip","saves","holds","ip","k9","bb9","hr9","fip"]);
-  const b1s = new Set(["hr","rbi","hits","runs","doubles","triples","tb"]);
   let rd: any[];
-  if (ps.has(cat)) rd = (await getPitchers(season)).data;
-  else if (b1s.has(cat)) rd = (await getHitters(season)).data;
-  else rd = (await getHittersCombined(season)).data;
+  if (ps.has(cat)) rd = (await getPitchersAll(season)).data;
+  else rd = (await getHittersAll(season)).data;
   if (team) rd = rd.filter((p: any) => p.teamName?.includes(team)||p.teamShort?.includes(team));
   const lb = new Set(["era","whip","fip","bb9","hr9","kPct"]);
   rd = [...rd].sort((a: any,b: any) => { const va = parseFloat(String(a[cat]??"0"))||0; const vb = parseFloat(String(b[cat]??"0"))||0; return lb.has(cat)?va-vb:vb-va; });
