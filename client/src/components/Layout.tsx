@@ -168,9 +168,30 @@ export default function Layout({ children }: LayoutProps) {
                     onMouseDown={() => handleSearchSelect(player)}
                   >
                     <div
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: player.colors?.primary || "#666" }}
-                    />
+                      className="w-8 h-8 rounded-full shrink-0 overflow-hidden bg-muted flex items-center justify-center"
+                      style={{ border: `2px solid ${player.colors?.primary || "#666"}` }}
+                    >
+                      {player.photoUrl ? (
+                        <img
+                          src={player.photoUrl}
+                          alt={player.playerName}
+                          className="w-full h-full object-cover object-top"
+                          onError={(e) => {
+                            const el = e.target as HTMLImageElement;
+                            el.style.display = "none";
+                            const span = document.createElement("span");
+                            span.className = "text-xs font-bold";
+                            span.style.color = player.colors?.primary || "#666";
+                            span.textContent = player.playerName.charAt(0);
+                            el.parentElement!.appendChild(span);
+                          }}
+                        />
+                      ) : (
+                        <span className="text-xs font-bold" style={{ color: player.colors?.primary || "#666" }}>
+                          {player.playerName.charAt(0)}
+                        </span>
+                      )}
+                    </div>
                     <div>
                       <span className="text-sm font-medium">{player.playerName}</span>
                       <span className="text-xs text-muted-foreground ml-2">{player.teamName}</span>

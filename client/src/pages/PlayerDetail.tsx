@@ -140,10 +140,30 @@ export default function PlayerDetail() {
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `radial-gradient(circle at 80% 50%, ${teamColor.primary} 0%, transparent 60%)` }} />
         <div className="relative flex items-center gap-5">
           <div
-            className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl flex items-center justify-center text-3xl font-display shrink-0"
-            style={{ backgroundColor: teamColor.primary + "33", color: teamColor.primary, border: `2px solid ${teamColor.primary}55` }}
+            className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl overflow-hidden shrink-0"
+            style={{ backgroundColor: teamColor.primary + "33", border: `2px solid ${teamColor.primary}55` }}
           >
-            {player.playerName.charAt(0)}
+            {(player as any).photoUrl ? (
+              <img
+                src={(player as any).photoUrl}
+                alt={player.playerName}
+                className="w-full h-full object-cover object-top"
+                onError={(e) => {
+                  const el = e.target as HTMLImageElement;
+                  el.style.display = "none";
+                  el.parentElement!.classList.add("flex", "items-center", "justify-center");
+                  const span = document.createElement("span");
+                  span.className = "text-3xl font-display";
+                  span.style.color = teamColor.primary;
+                  span.textContent = player.playerName.charAt(0);
+                  el.parentElement!.appendChild(span);
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-3xl font-display" style={{ color: teamColor.primary }}>
+                {player.playerName.charAt(0)}
+              </div>
+            )}
           </div>
           <div>
             <h1 className="font-display text-3xl lg:text-4xl tracking-wider leading-none mb-1">{player.playerName}</h1>
