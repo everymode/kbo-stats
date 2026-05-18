@@ -138,6 +138,18 @@ function pR($: cheerio.CheerioAPI) {
   return rows;
 }
 
+function pIds($: cheerio.CheerioAPI): Map<string, string> {
+  const ids = new Map<string, string>();
+  $("table tr td a").each((_: number, a: any) => {
+    const href = $(a).attr("href") || "";
+    const m = href.match(/playerId=(\d+)/);
+    if (m) ids.set($(a).text().trim(), m[1]);
+  });
+  return ids;
+}
+
+const PHOTO_CDN = "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle";
+
 async function getTeamRank() {
   const c = gc("tr"); if (c) return c;
   const $ = await fH(`${BASE_URL}/Record/TeamRank/TeamRankDaily.aspx`);
@@ -199,12 +211,15 @@ async function getHittersAll(season = "2026") {
   const seen = new Set<string>(); const data: any[] = [];
   for (const $ of pages$) {
     const rows = pR($);
+    const ids = pIds($);
     for (const c of rows) {
       const name = c[1] ?? "";
       if (!name || seen.has(name)) continue;
       seen.add(name);
       const t = ti(c[2] ?? "");
+      const pid = ids.get(name) || "";
       data.push({ rank: data.length + 1, playerName: name, teamName: c[2]??"", teamShort: t.short, colors: t.colors,
+        playerId: pid, photoUrl: pid ? `${PHOTO_CDN}/${season}/${pid}.jpg` : "",
         avg: c[3]??"0", games: parseInt(c[4])||0, pa: parseInt(c[5])||0, ab: parseInt(c[6])||0,
         runs: parseInt(c[7])||0, hits: parseInt(c[8])||0, doubles: parseInt(c[9])||0, triples: parseInt(c[10])||0,
         hr: parseInt(c[11])||0, tb: parseInt(c[12])||0, rbi: parseInt(c[13])||0, sac: parseInt(c[14])||0, sf: parseInt(c[15])||0 });
@@ -236,6 +251,7 @@ async function getPitchersAll(season = "2026") {
   const seen = new Set<string>(); const data: any[] = [];
   for (const $ of pages$) {
     const rows = pR($);
+    const ids = pIds($);
     for (const c of rows) {
       const name = c[1] ?? "";
       if (!name || seen.has(name)) continue;
@@ -243,7 +259,9 @@ async function getPitchersAll(season = "2026") {
       const t = ti(c[2] ?? "");
       const ip = pI(c[10]||"0"); const so = parseInt(c[15])||0; const bb = parseInt(c[13])||0;
       const hr = parseInt(c[12])||0; const hbp = parseInt(c[14])||0;
+      const pid = ids.get(name) || "";
       data.push({ rank: data.length + 1, playerName: name, teamName: c[2]??"", teamShort: t.short, colors: t.colors,
+        playerId: pid, photoUrl: pid ? `${PHOTO_CDN}/${season}/${pid}.jpg` : "",
         era: c[3]??"0.00", games: parseInt(c[4])||0, wins: parseInt(c[5])||0, losses: parseInt(c[6])||0,
         saves: parseInt(c[7])||0, holds: parseInt(c[8])||0, wpct: c[9]??"0", ip: c[10]??"0",
         hits: parseInt(c[11])||0, hr, bb, hbp, so, runs: parseInt(c[16])||0, er: parseInt(c[17])||0, whip: c[18]??"0.00",

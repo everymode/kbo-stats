@@ -57,6 +57,7 @@ function TopCard({ item, rank, cat, isH }: { item: any; rank: number; cat: strin
   const val = item[cat] ?? "-";
   const ctx = ctxStats(item, cat, isH);
   const first = rank === 1;
+  const photoUrl = item.photoUrl || "";
 
   return (
     <div
@@ -65,26 +66,44 @@ function TopCard({ item, rank, cat, isH }: { item: any; rank: number; cat: strin
     >
       <div className={first ? "h-1.5" : "h-1"} style={{ backgroundColor: tc }} />
       <div className={first ? "p-5" : "p-4"}>
-        <div
-          className={`font-stat font-black leading-none mb-3 ${first ? "text-4xl" : "text-2xl"}`}
-          style={{ color: tc, opacity: first ? 1 : 0.45 }}
-        >
-          {rank}
-        </div>
-        <div className="flex items-center gap-2 mb-3">
-          <TeamBadge teamName={item.teamName} size="sm" />
-          <div className="min-w-0">
-            <Link
-              href={`/players/${encodeURIComponent(item.playerName)}`}
-              className={`font-semibold hover:text-primary transition-colors block truncate ${first ? "text-base" : "text-sm"}`}
+        <div className="flex gap-3">
+          {/* 선수 사진 */}
+          {photoUrl && (
+            <div
+              className={`shrink-0 rounded-lg overflow-hidden bg-muted ${first ? "w-20 h-24" : "w-16 h-20"}`}
+              style={{ borderBottom: `3px solid ${tc}` }}
             >
-              {item.playerName}
-            </Link>
-            <span className="text-xs text-muted-foreground">{item.teamShort}</span>
+              <img
+                src={photoUrl}
+                alt={item.playerName}
+                className="w-full h-full object-cover object-top"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div
+              className={`font-stat font-black leading-none mb-2 ${first ? "text-3xl" : "text-xl"}`}
+              style={{ color: tc, opacity: first ? 1 : 0.45 }}
+            >
+              {rank}
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <TeamBadge teamName={item.teamName} size="sm" />
+              <div className="min-w-0">
+                <Link
+                  href={`/players/${encodeURIComponent(item.playerName)}`}
+                  className={`font-semibold hover:text-primary transition-colors block truncate ${first ? "text-base" : "text-sm"}`}
+                >
+                  {item.playerName}
+                </Link>
+                <span className="text-xs text-muted-foreground">{item.teamShort}</span>
+              </div>
+            </div>
+            <div className={`font-stat font-bold ${first ? "text-3xl" : "text-2xl"} ${SABER_CATS.has(cat) ? "text-blue-400" : ""}`}>
+              {val}
+            </div>
           </div>
-        </div>
-        <div className={`font-stat font-bold ${first ? "text-4xl" : "text-2xl"} ${SABER_CATS.has(cat) ? "text-blue-400" : ""}`}>
-          {val}
         </div>
         <div className="flex gap-4 mt-3 pt-3 border-t border-border/40">
           {ctx.map(s => (
