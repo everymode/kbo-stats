@@ -241,6 +241,13 @@ async function getHittersAll(season = "2026") {
       p.babip = bd > 0 ? ((p.hits-p.hr)/bd).toFixed(3) : "0.000";
     }
   } catch {}
+  // 도루 데이터 병합 (Runner/Basic.aspx)
+  try {
+    const run$ = await fHPages(`${BASE_URL}/Record/Player/Runner/Basic.aspx`, { leagueId: "1", sort: "Game_Cn" }, 5, season);
+    const rm = new Map<string, any>();
+    for (const $ of run$) { for (const c of pR($)) { const n = c[1]; if (n && !rm.has(n)) rm.set(n, { sb: parseInt(c[5])||0, cs: parseInt(c[6])||0, sba: parseInt(c[4])||0 }); } }
+    for (const p of data) { const r = rm.get(p.playerName) || {}; p.sb = r.sb||0; p.cs = r.cs||0; p.sba = r.sba||0; }
+  } catch {}
   const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
 }
 
