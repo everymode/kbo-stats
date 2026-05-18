@@ -38,43 +38,79 @@ const PITCHER_CATEGORIES = [
 const TEAMS = ["전체", "KIA", "삼성", "LG", "두산", "KT", "SSG", "NC", "롯데", "한화", "키움"];
 const SEASONS = ["2026", "2025", "2024", "2023", "2022"];
 
-function LeaderRow({
-  item, index, category, maxValue, isHitter,
-}: {
-  item: Hitter | Pitcher;
-  index: number;
-  category: string;
-  maxValue: number;
-  isHitter: boolean;
-}) {
-  const getValue = () => {
-    return (item as any)[category] ?? "-";
-  };
+const SABER_CATS = new Set(["ops","obp","slg","iso","babip","bbPct","fip","k9","bb9","hr9"]);
 
-  const rawValue = getValue();
-  const numValue = typeof rawValue === "string" ? parseFloat(rawValue) || 0 : (rawValue as number) || 0;
-  const isLowerBetter = ["era", "whip", "fip", "bb9", "hr9"].includes(category);
-  const barPct = isLowerBetter
-    ? maxValue > 0 ? Math.max(0, 1 - numValue / maxValue) * 100 : 0
-    : maxValue > 0 ? (numValue / maxValue) * 100 : 0;
+function ctxStats(item: any, cat: string, isH: boolean) {
+  const h = [
+    { l: "G", v: item.games, k: "games" }, { l: "PA", v: item.pa, k: "pa" },
+    { l: "AVG", v: item.avg, k: "avg" }, { l: "HR", v: item.hr, k: "hr" }, { l: "RBI", v: item.rbi, k: "rbi" },
+  ];
+  const p = [
+    { l: "G", v: item.games, k: "games" }, { l: "IP", v: item.ip, k: "ip" },
+    { l: "ERA", v: item.era, k: "era" }, { l: "W", v: item.wins, k: "wins" }, { l: "K", v: item.so, k: "so" },
+  ];
+  return (isH ? h : p).filter(s => s.k !== cat).slice(0, 3);
+}
 
-  const teamColor = item.colors?.primary || "#666";
-  const isSaber = ["ops", "obp", "slg", "iso", "babip", "bbPct", "fip", "k9", "bb9", "hr9"].includes(category);
+function TopCard({ item, rank, cat, isH }: { item: any; rank: number; cat: string; isH: boolean }) {
+  const tc = item.colors?.primary || "#666";
+  const val = item[cat] ?? "-";
+  const ctx = ctxStats(item, cat, isH);
+  const first = rank === 1;
 
   return (
     <div
-      className="flex items-center gap-3 py-2.5 px-4 rounded-lg hover:bg-accent/60 transition-all animate-fade-in-up"
-      style={{ animationDelay: `${index * 25}ms` }}
+      className={`relative rounded-xl border border-border overflow-hidden animate-fade-in-up ${first ? "shadow-lg" : "shadow-sm"}`}
+      style={{ animationDelay: `${rank * 50}ms`, background: `linear-gradient(160deg, ${tc}0D 0%, transparent 50%)` }}
     >
-      <div className="w-7 text-center font-stat text-sm text-muted-foreground shrink-0">
-        {index < 3 ? (
-          <span className="font-bold" style={{ color: index === 0 ? "#FFD700" : index === 1 ? "#C0C0C0" : "#CD7F32" }}>
-            {index + 1}
-          </span>
-        ) : index + 1}
+      <div className={first ? "h-1.5" : "h-1"} style={{ backgroundColor: tc }} />
+      <div className={first ? "p-5" : "p-4"}>
+        <div
+          className={`font-stat font-black leading-none mb-3 ${first ? "text-4xl" : "text-2xl"}`}
+          style={{ color: tc, opacity: first ? 1 : 0.45 }}
+        >
+          {rank}
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <TeamBadge teamName={item.teamName} size="sm" />
+          <div className="min-w-0">
+            <Link
+              href={`/players/${encodeURIComponent(item.playerName)}`}
+              className={`font-semibold hover:text-primary transition-colors block truncate ${first ? "text-base" : "text-sm"}`}
+            >
+              {item.playerName}
+            </Link>
+            <span className="text-xs text-muted-foreground">{item.teamShort}</span>
+          </div>
+        </div>
+        <div className={`font-stat font-bold ${first ? "text-4xl" : "text-2xl"} ${SABER_CATS.has(cat) ? "text-blue-400" : ""}`}>
+          {val}
+        </div>
+        <div className="flex gap-4 mt-3 pt-3 border-t border-border/40">
+          {ctx.map(s => (
+            <div key={s.l}>
+              <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">{s.l}</div>
+              <div className="text-xs font-stat font-medium text-muted-foreground">{s.v ?? "-"}</div>
+            </div>
+          ))}
+        </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="w-36 lg:w-44 shrink-0 flex items-center gap-2">
+function CompactRow({ item, rank, cat, isH }: { item: any; rank: number; cat: string; isH: boolean }) {
+  const tc = item.colors?.primary || "#666";
+  const val = item[cat] ?? "-";
+  const ctx = ctxStats(item, cat, isH);
+
+  return (
+    <div
+      className="flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-accent/50 transition-all animate-fade-in-up"
+      style={{ animationDelay: `${Math.min(rank, 20) * 15}ms`, borderLeft: `3px solid ${tc}` }}
+    >
+      <div className="w-7 text-center font-stat text-sm text-muted-foreground shrink-0">{rank}</div>
+      <div className="flex-1 min-w-0 flex items-center gap-2">
         <TeamBadge teamName={item.teamName} size="sm" />
         <Link
           href={`/players/${encodeURIComponent(item.playerName)}`}
@@ -83,22 +119,14 @@ function LeaderRow({
           {item.playerName}
         </Link>
       </div>
-
-      <div className="flex-1 flex items-center gap-2 min-w-0">
-        <div className="flex-1 bg-border/40 rounded-full h-1.5 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-700 ease-out"
-            style={{
-              width: `${barPct}%`,
-              backgroundColor: teamColor,
-              boxShadow: `0 0 6px ${teamColor}66`,
-            }}
-          />
-        </div>
-        <div className={`font-stat text-sm font-semibold w-16 text-right shrink-0 ${isSaber ? "text-blue-400 dark:text-blue-300" : "text-primary"}`}>
-          {rawValue === "-" ? "-" : (typeof rawValue === "number" ? rawValue : rawValue)}
-        </div>
+      <div className={`w-16 text-right font-stat text-sm font-bold shrink-0 ${SABER_CATS.has(cat) ? "text-blue-400" : "text-primary"}`}>
+        {val}
       </div>
+      {ctx.map(s => (
+        <div key={s.l} className="w-12 text-right shrink-0 hidden sm:block">
+          <div className="text-xs font-stat text-muted-foreground">{s.v ?? "-"}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -143,11 +171,6 @@ export default function Leaderboard() {
   const saberCats = categories.filter(c => c.group === "세이버");
   const isHitter = tab === "hitter";
   const isLowerBetter = ["era", "whip", "fip", "bb9", "hr9"].includes(category);
-
-  const maxValue = data.reduce((max, item) => {
-    const val = parseFloat(String((item as any)[category] ?? "0")) || 0;
-    return Math.max(max, val);
-  }, 0);
 
   const currentCat = categories.find(c => c.value === category);
   const isSaberCategory = currentCat?.group === "세이버";
@@ -243,38 +266,50 @@ export default function Leaderboard() {
         </div>
       </div>
 
-      {/* 리더보드 목록 */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3 px-4">
-          <div className="w-7 text-xs font-bold text-muted-foreground uppercase">#</div>
-          <div className="w-32 lg:w-40 text-xs font-bold text-muted-foreground uppercase">선수</div>
-          <div className={`flex-1 text-xs font-bold uppercase tracking-wider text-right pr-16 ${isSaberCategory ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
-            {currentCat?.label}
-            {isLowerBetter && <span className="ml-1 text-muted-foreground font-medium">(낮을수록 좋음)</span>}
+      {/* 리더보드 */}
+      {loading ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-52 rounded-xl" />)}
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-2">
+            {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
           </div>
         </div>
-
-        {loading ? (
-          <div className="space-y-2 mt-2">
-            {Array.from({ length: 15 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
-          </div>
-        ) : data.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">데이터가 없습니다.</div>
-        ) : (
-          <div className="space-y-0.5 mt-2">
-            {data.map((item, i) => (
-              <LeaderRow
-                key={`${item.playerName}-${i}`}
-                item={item}
-                index={i}
-                category={category}
-                maxValue={maxValue}
-                isHitter={isHitter}
-              />
+      ) : data.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground bg-card border border-border rounded-2xl">데이터가 없습니다.</div>
+      ) : (
+        <>
+          {/* Top 3 포디움 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {data.slice(0, 3).map((item, i) => (
+              <TopCard key={`top-${item.playerName}`} item={item} rank={i + 1} cat={category} isH={isHitter} />
             ))}
           </div>
-        )}
-      </div>
+
+          {/* 4위~ 컴팩트 테이블 */}
+          {data.length > 3 && (
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 px-3 py-1.5 mb-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                <div className="w-7 text-center">#</div>
+                <div className="flex-1">선수</div>
+                <div className={`w-16 text-right ${isSaberCategory ? "text-blue-500/70" : ""}`}>
+                  {currentCat?.label?.split(" ").pop() || category}
+                  {isLowerBetter && " ↓"}
+                </div>
+                {ctxStats(data[3], category, isHitter).map(s => (
+                  <div key={s.l} className="w-12 text-right hidden sm:block">{s.l}</div>
+                ))}
+              </div>
+              <div className="space-y-0.5">
+                {data.slice(3).map((item, i) => (
+                  <CompactRow key={`${item.playerName}-${i}`} item={item} rank={i + 4} cat={category} isH={isHitter} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
