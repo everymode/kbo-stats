@@ -12,6 +12,7 @@ import Players from "./pages/Players";
 import PlayerDetail from "./pages/PlayerDetail";
 import Archive from "./pages/Archive";
 import Glossary from "./pages/Glossary";
+import FreeAgents from "./pages/FreeAgents";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/teams/:team" component={Teams} />
         <Route path="/players" component={Players} />
         <Route path="/players/:name" component={PlayerDetail} />
+        <Route path="/fa" component={FreeAgents} />
         <Route path="/archive" component={Archive} />
         <Route path="/glossary" component={Glossary} />
         <Route path="/404" component={NotFound} />
