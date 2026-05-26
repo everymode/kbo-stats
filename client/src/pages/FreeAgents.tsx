@@ -155,10 +155,10 @@ function FADetailDialog({ item, open, onClose }: {
 
   const gradeDesc =
     grade === "A"
-      ? "전체 FA 신청 선수 중 상위 30% — 최고 시장가치"
+      ? "소속팀 내 연봉 상위 3위 이내 & 리그 연봉 30위 이내 — 인적보상 대상, 최고 시장가치"
       : grade === "B"
-        ? "전체 FA 신청 선수 중 중위 40% — 안정적 전력"
-        : "전체 FA 신청 선수 중 하위 30% — 역할 선수";
+        ? "리그 연봉 중위권 — 인적보상 대상, 안정적 전력"
+        : "리그 연봉 하위권 — 보상 의무 없이 자유 이적 가능";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -193,7 +193,7 @@ function FADetailDialog({ item, open, onClose }: {
                   {gradeStyle.label}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  FA 스코어: {score.toFixed(1)}점
+                  직전 연봉: {player.previousSalary}억 (리그 내 연봉 순위 기준)
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">{gradeDesc}</p>
@@ -219,8 +219,9 @@ function FADetailDialog({ item, open, onClose }: {
                   산출 근거
                 </div>
                 <BreakdownRow
-                  label="기본가치 (성적 기반)"
-                  value={`${contract.breakdown.baseValue}억`}
+                  label="기본 연간 성적가치"
+                  value={`${contract.breakdown.baseAPV}억/년`}
+                  desc="최근 3시즌 평균 성적 기반"
                 />
                 <BreakdownRow
                   label="나이 계수"
@@ -228,19 +229,14 @@ function FADetailDialog({ item, open, onClose }: {
                   desc={player.age <= 29 ? "전성기 프리미엄" : player.age <= 33 ? "안정적" : "하락 반영"}
                 />
                 <BreakdownRow
-                  label="내구성 계수"
-                  value={`×${contract.breakdown.durabilityFactor.toFixed(2)}`}
-                  desc={contract.breakdown.durabilityFactor >= 1.1 ? "풀타임 활약" : "출장 제한 반영"}
-                />
-                <BreakdownRow
-                  label="포지션 계수"
-                  value={`×${contract.breakdown.positionFactor.toFixed(2)}`}
-                  desc={contract.breakdown.positionFactor > 1 ? "희소 포지션 프리미엄" : "기본"}
-                />
-                <BreakdownRow
                   label="등급 프리미엄"
                   value={`×${contract.breakdown.gradePremium.toFixed(2)}`}
                   desc={grade === "A" ? "입찰 경쟁 프리미엄" : grade === "C" ? "시장 할인" : "기본"}
+                />
+                <BreakdownRow
+                  label="계약 연수"
+                  value={`${contract.years}년`}
+                  desc={`만 ${player.age}세 기준`}
                 />
               </div>
             </div>

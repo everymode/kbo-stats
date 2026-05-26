@@ -1,8 +1,9 @@
 /**
  * FA 등급 산정 및 계약 규모 예측 유틸리티
  *
- * - FA 스코어 계산 → 등급 (A/B/C) 배정
- * - 예상 계약 규모 (총액, 연수, 연평균) 산출
+ * - 등급: 직전 연봉 순위 기반 (KBO 규정: 팀 내 상위 3위 & 리그 30위 이내 → A등급)
+ * - 계약: 연간 성적가치(APV) × 나이계수 × 등급프리미엄 × 계약연수
+ * - 보상: 보호선수 20인 제외 후 인적보상 (2024 개정 규정)
  */
 
 import type { FAPlayer } from "@/data/fa2027";
@@ -16,189 +17,191 @@ export interface ContractEstimate {
   years: number;
   annualAvg: number;    // 억
   breakdown: {
-    baseValue: number;
-    ageFactor: number;
-    durabilityFactor: number;
-    positionFactor: number;
-    gradePremium: number;
+    baseAPV: number;      // 기본 연간 성적가치 (억/년)
+    ageFactor: number;    // 나이 계수
+    gradePremium: number; // 등급 프리미엄
   };
 }
 
 export interface CompensationInfo {
   type: "인적보상 대상" | "보상 없음";
-  option1?: string; // 인적보상 + 보상금
-  option2?: string; // 보상금만
-  amount1?: number; // 옵션1 보상금 (억)
-  amount2?: number; // 옵션2 보상금 (억)
+  option1?: string;
+  option2?: string;
+  amount1?: number;
+  amount2?: number;
 }
 
 export interface FAPlayerWithGrade {
   player: FAPlayer;
-  score: number;
+  score: number;       // 등급 판별 기준 (직전 연봉)
   grade: FAGrade;
   contract: ContractEstimate;
   compensation: CompensationInfo;
 }
 
-// ─── FA 스코어 계산 ──────────────────────────────────────
-
-function calculateFAScore(player: FAPlayer): number {
-  if (player.type === "hitter") {
-    const ops = parseFloat(player.recentStats.ops || "0");
-    const hr = player.recentStats.hr || 0;
-    const hits = player.recentStats.hits || 0;
-    const sb = player.recentStats.sb || 0;
-    return (ops * 250) + (hr * 2.0) + (hits * 0.3) + (sb * 0.5) + (player.awards * 5);
-  }
-
-  // 투수
-  const era = parseFloat(player.recentStats.era || "9.99");
-  const wins = player.recentStats.wins || 0;
-  const saves = player.recentStats.saves || 0;
-  const holds = player.recentStats.holds || 0;
-  const ip = parseFloat(player.recentStats.ip || "0");
-  const k9 = parseFloat(player.recentStats.k9 || "0");
-  return ((4.50 - era) * 40) + (wins * 3) + (saves * 2.5) + (holds * 1.5) + (ip * 0.15) + (k9 * 8) + (player.awards * 5);
-}
-
-// ─── 등급 배정 ───────────────────────────────────────────
+// ─── 등급 배정 (연봉 순위 기반) ──────────────────────────
 
 export function determineFAGrades(players: FAPlayer[]): FAPlayerWithGrade[] {
-  const scored = players.map((p) => ({
-    player: p,
-    score: calculateFAScore(p),
-  }));
-
-  // 스코어 내림차순 정렬
-  const sorted = [...scored].sort((a, b) => b.score - a.score);
+  // 직전 연봉 내림차순 정렬 (KBO 등급 = 연봉 순위)
+  const sorted = [...players].sort((a, b) => b.previousSalary - a.previousSalary);
   const total = sorted.length;
   const aCount = Math.max(1, Math.round(total * 0.3));
   const bCount = Math.max(1, Math.round(total * 0.4));
 
-  return sorted.map((item, idx) => {
+  return sorted.map((player, idx) => {
     let grade: FAGrade;
     if (idx < aCount) grade = "A";
     else if (idx < aCount + bCount) grade = "B";
     else grade = "C";
 
-    const contract = estimateContract(item.player, grade);
-    const compensation = getCompensation(item.player, grade);
+    const contract = estimateContract(player, grade);
+    const compensation = getCompensation(player, grade);
 
-    return { ...item, grade, contract, compensation };
+    return { player, score: player.previousSalary, grade, contract, compensation };
   });
+}
+
+// ─── 연간 성적가치 (APV) 산출 ────────────────────────────
+
+function getBaseAPV(player: FAPlayer): number {
+  if (player.type === "hitter") {
+    return getHitterAPV(player);
+  }
+  if (player.role === "starter") return getStarterAPV(player);
+  if (player.role === "closer") return getCloserAPV(player);
+  return getRelieverAPV(player);
+}
+
+function getHitterAPV(player: FAPlayer): number {
+  const ops = parseFloat(player.recentStats.ops || "0");
+  const hr = player.recentStats.hr || 0;
+  const sb = player.recentStats.sb || 0;
+
+  // OPS 기반 베이스
+  let base: number;
+  if (ops >= 0.900) base = 30;
+  else if (ops >= 0.870) base = 25;
+  else if (ops >= 0.840) base = 21;
+  else if (ops >= 0.810) base = 17;
+  else if (ops >= 0.780) base = 14;
+  else if (ops >= 0.750) base = 11;
+  else if (ops >= 0.720) base = 8;
+  else if (ops >= 0.700) base = 6;
+  else base = 4;
+
+  // 홈런 보정
+  if (hr >= 25) base += 3;
+  else if (hr >= 20) base += 2;
+  else if (hr >= 15) base += 1;
+
+  // 도루 보정
+  if (sb >= 30) base += 2;
+  else if (sb >= 20) base += 1;
+
+  return base;
+}
+
+function getStarterAPV(player: FAPlayer): number {
+  const era = parseFloat(player.recentStats.era || "9.99");
+  const ip = parseFloat(player.recentStats.ip || "0");
+  const k9 = parseFloat(player.recentStats.k9 || "0");
+
+  // ERA 기반 베이스
+  let base: number;
+  if (era < 2.50) base = 28;
+  else if (era < 3.00) base = 24;
+  else if (era < 3.30) base = 20;
+  else if (era < 3.60) base = 16;
+  else if (era < 4.00) base = 13;
+  else if (era < 4.50) base = 9;
+  else base = 5;
+
+  // 이닝 보정 (내구성)
+  if (ip >= 180) base += 3;
+  else if (ip >= 170) base += 2;
+  else if (ip >= 160) base += 1;
+
+  // 탈삼진율 보정
+  if (k9 >= 9.0) base += 2;
+  else if (k9 >= 8.0) base += 1;
+
+  return base;
+}
+
+function getCloserAPV(player: FAPlayer): number {
+  const era = parseFloat(player.recentStats.era || "9.99");
+  const saves = player.recentStats.saves || 0;
+  const k9 = parseFloat(player.recentStats.k9 || "0");
+
+  let base: number;
+  if (era < 2.00) base = 22;
+  else if (era < 2.50) base = 18;
+  else if (era < 3.00) base = 14;
+  else if (era < 3.50) base = 10;
+  else base = 6;
+
+  if (saves >= 35) base += 3;
+  else if (saves >= 25) base += 2;
+  else if (saves >= 15) base += 1;
+
+  if (k9 >= 10.0) base += 2;
+  else if (k9 >= 9.0) base += 1;
+
+  return base;
+}
+
+function getRelieverAPV(player: FAPlayer): number {
+  const era = parseFloat(player.recentStats.era || "9.99");
+  const holds = player.recentStats.holds || 0;
+
+  let base: number;
+  if (era < 2.50) base = 12;
+  else if (era < 3.00) base = 9;
+  else if (era < 3.50) base = 7;
+  else if (era < 4.00) base = 5;
+  else base = 3;
+
+  if (holds >= 25) base += 2;
+  else if (holds >= 15) base += 1;
+
+  return base;
+}
+
+// ─── 나이 → 계약연수 & 가치계수 ─────────────────────────
+
+function getAgeFactors(age: number): { years: number; ageFactor: number } {
+  if (age <= 27) return { years: 5, ageFactor: 1.20 };
+  if (age <= 28) return { years: 5, ageFactor: 1.15 };
+  if (age <= 29) return { years: 5, ageFactor: 1.10 };
+  if (age <= 30) return { years: 4, ageFactor: 1.05 };
+  if (age <= 31) return { years: 4, ageFactor: 1.00 };
+  if (age <= 32) return { years: 4, ageFactor: 0.95 };
+  if (age <= 33) return { years: 3, ageFactor: 0.85 };
+  if (age <= 34) return { years: 3, ageFactor: 0.75 };
+  if (age <= 35) return { years: 2, ageFactor: 0.65 };
+  return { years: 2, ageFactor: 0.55 };
 }
 
 // ─── 계약 규모 산출 ──────────────────────────────────────
 
 function estimateContract(player: FAPlayer, grade: FAGrade): ContractEstimate {
-  let baseValue: number;
-
-  if (player.type === "hitter") {
-    const ops = parseFloat(player.recentStats.ops || "0");
-    const hr = player.recentStats.hr || 0;
-
-    if (ops >= 0.900) baseValue = 90;
-    else if (ops >= 0.850) baseValue = 70;
-    else if (ops >= 0.800) baseValue = 55;
-    else if (ops >= 0.750) baseValue = 40;
-    else if (ops >= 0.700) baseValue = 28;
-    else baseValue = 18;
-
-    // 홈런 보정 (15개 초과분)
-    if (hr > 15) baseValue += (hr - 15) * 2;
-  } else {
-    const era = parseFloat(player.recentStats.era || "9.99");
-    const ip = parseFloat(player.recentStats.ip || "0");
-    const saves = player.recentStats.saves || 0;
-    const holds = player.recentStats.holds || 0;
-
-    if (player.role === "starter") {
-      if (era < 3.00) baseValue = 85;
-      else if (era < 3.50) baseValue = 65;
-      else if (era < 4.00) baseValue = 48;
-      else if (era < 4.50) baseValue = 32;
-      else baseValue = 20;
-      // 이닝 보정
-      if (ip > 150) baseValue += (parseFloat(ip) - 150) * 0.3;
-    } else if (player.role === "closer") {
-      if (era < 2.50) baseValue = 55;
-      else if (era < 3.50) baseValue = 40;
-      else if (era < 4.50) baseValue = 25;
-      else baseValue = 15;
-      // 세이브 보정
-      baseValue += saves * 0.8;
-    } else {
-      // 중계
-      if (era < 2.50) baseValue = 38;
-      else if (era < 3.50) baseValue = 28;
-      else if (era < 4.50) baseValue = 18;
-      else baseValue = 12;
-      // 홀드 보정
-      baseValue += holds * 0.4;
-    }
-  }
-
-  // 나이 계수
-  let ageFactor: number;
-  let years: number;
-  if (player.age <= 29) { ageFactor = 1.25; years = 5; }
-  else if (player.age <= 31) { ageFactor = 1.10; years = 4; }
-  else if (player.age <= 33) { ageFactor = 0.95; years = 4; }
-  else if (player.age <= 35) { ageFactor = 0.75; years = 3; }
-  else { ageFactor = 0.55; years = 2; }
-
-  // 내구성 계수
-  const games = player.recentStats.games || 0;
-  const ip = parseFloat(player.recentStats.ip || "0");
-  let durabilityFactor: number;
-
-  if (player.type === "hitter") {
-    if (games >= 130) durabilityFactor = 1.15;
-    else if (games >= 110) durabilityFactor = 1.00;
-    else if (games >= 90) durabilityFactor = 0.85;
-    else durabilityFactor = 0.65;
-  } else {
-    if (player.role === "starter") {
-      if (ip >= 170) durabilityFactor = 1.15;
-      else if (ip >= 140) durabilityFactor = 1.00;
-      else if (ip >= 110) durabilityFactor = 0.85;
-      else durabilityFactor = 0.65;
-    } else {
-      if (games >= 55) durabilityFactor = 1.15;
-      else if (games >= 45) durabilityFactor = 1.00;
-      else if (games >= 35) durabilityFactor = 0.85;
-      else durabilityFactor = 0.65;
-    }
-  }
-
-  // 포지션 계수
-  let positionFactor: number;
-  if (player.type === "hitter") {
-    const pos = player.position;
-    if (pos.includes("포수") || pos.includes("유격")) positionFactor = 1.10;
-    else if (pos.includes("2루") || pos.includes("3루") || pos.includes("중견")) positionFactor = 1.05;
-    else positionFactor = 1.00;
-  } else {
-    if (player.role === "starter") positionFactor = 1.05;
-    else if (player.role === "closer") positionFactor = 1.00;
-    else positionFactor = 0.90;
-  }
-
-  // 등급 보정 (시장 경쟁 프리미엄)
+  const baseAPV = getBaseAPV(player);
+  const { years, ageFactor } = getAgeFactors(player.age);
   const gradePremium = grade === "A" ? 1.15 : grade === "B" ? 1.00 : 0.90;
 
-  const totalAmount = Math.round(baseValue * ageFactor * durabilityFactor * positionFactor * gradePremium);
-  const annualAvg = Math.round((totalAmount / years) * 10) / 10;
+  const adjustedAPV = Math.round(baseAPV * ageFactor * gradePremium * 10) / 10;
+  const totalAmount = Math.round(adjustedAPV * years);
+  const annualAvg = Math.round(adjustedAPV * 10) / 10;
 
   return {
     totalAmount,
     years,
     annualAvg,
-    breakdown: { baseValue, ageFactor, durabilityFactor, positionFactor, gradePremium },
+    breakdown: { baseAPV, ageFactor, gradePremium },
   };
 }
 
-// ─── 보상 정보 ───────────────────────────────────────────
+// ─── 보상 정보 (2024 개정: 보호선수 20인) ────────────────
 
 function getCompensation(player: FAPlayer, grade: FAGrade): CompensationInfo {
   const salary = player.previousSalary;
@@ -206,8 +209,8 @@ function getCompensation(player: FAPlayer, grade: FAGrade): CompensationInfo {
   if (grade === "A") {
     return {
       type: "인적보상 대상",
-      option1: `인적보상 1명 + 보상금 ${(salary * 2).toFixed(1)}억`,
-      option2: `보상금 ${(salary * 3).toFixed(1)}억 (인적보상 없이)`,
+      option1: `인적보상 1명 (보호 20인 제외) + 보상금 ${(salary * 2).toFixed(1)}억`,
+      option2: `보상금 ${(salary * 3).toFixed(1)}억 (인적보상 면제)`,
       amount1: Math.round(salary * 2 * 10) / 10,
       amount2: Math.round(salary * 3 * 10) / 10,
     };
@@ -215,8 +218,8 @@ function getCompensation(player: FAPlayer, grade: FAGrade): CompensationInfo {
   if (grade === "B") {
     return {
       type: "인적보상 대상",
-      option1: `인적보상 1명 + 보상금 ${salary.toFixed(1)}억`,
-      option2: `보상금 ${(salary * 2).toFixed(1)}억 (인적보상 없이)`,
+      option1: `인적보상 1명 (보호 20인 제외) + 보상금 ${salary.toFixed(1)}억`,
+      option2: `보상금 ${(salary * 2).toFixed(1)}억 (인적보상 면제)`,
       amount1: Math.round(salary * 10) / 10,
       amount2: Math.round(salary * 2 * 10) / 10,
     };
@@ -245,6 +248,5 @@ export const GRADE_STYLES: Record<FAGrade, { bg: string; text: string; label: st
 };
 
 export function formatAmount(amount: number): string {
-  if (amount >= 100) return `${amount}억`;
   return `${amount}억`;
 }
