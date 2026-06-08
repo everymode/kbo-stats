@@ -98,6 +98,124 @@ function parseRows($: cheerio.CheerioAPI): string[][] {
   return rows;
 }
 
+// ─── 최근 경기 결과 (일정 ajax 기반, 순서 보존) ─────────────
+export type GameResult = "W" | "D" | "L";
+
+interface ScheduleGame {
+  date: string;
+  away: string;
+  home: string;
+  awayResult: GameResult;
+  homeResult: GameResult;
+}
+
+// "06.02(화)" → "20260602"
+export function parseScheduleDate(dayText: string, season: string): string {
+  const m = dayText.match(/(\d{1,2})\.(\d{1,2})/);
+  if (!m) return "";
+  return `${season}${m[1].padStart(2, "0")}${m[2].padStart(2, "0")}`;
+}
+
+function classToResult(cls?: string): GameResult | null {
+  if (cls === "win") return "W";
+  if (cls === "lose") return "L";
+  if (cls === "same") return "D";
+  return null;
+}
+
+// "<span>한화</span><em><span class='lose'>3</span><span>vs</span><span class='win'>5</span></em><span>두산</span>"
+export function parsePlayCell(html: string): Omit<ScheduleGame, "date"> | null {
+  const $ = cheerio.load(`<div id="r">${html}</div>`);
+  const root = $("#r");
+  const topSpans = root.children("span");
+  if (topSpans.length < 2) return null;
+  const away = topSpans.first().text().trim();
+  const home = topSpans.last().text().trim();
+  const scoreSpans = root.find("em > span").filter((_, el) => !!$(el).attr("class"));
+  if (scoreSpans.length < 2) return null; // 미완료(예정/취소)
+  const awayResult = classToResult($(scoreSpans[0]).attr("class"));
+  const homeResult = classToResult($(scoreSpans[1]).attr("class"));
+  if (!awayResult || !homeResult) return null;
+  return { away, home, awayResult, homeResult };
+}
+
+async function fetchScheduleMonth(season: string, month: number): Promise<ScheduleGame[]> {
+  const body = new URLSearchParams({
+    leId: "1",
+    srIdList: "0,9,6",
+    seasonId: season,
+    gameMonth: String(month).padStart(2, "0"),
+    teamId: "",
+  });
+  const res = await axios.post(`${BASE_URL}/ws/Schedule.asmx/GetScheduleList`, body.toString(), {
+    headers: {
+      ...HEADERS,
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "X-Requested-With": "XMLHttpRequest",
+      Referer: `${BASE_URL}/Schedule/Schedule.aspx`,
+    },
+    timeout: 15000,
+  });
+  const rows = (res.data?.rows ?? []) as Array<{ row: Array<{ Text: string; Class: string | null }> }>;
+  const games: ScheduleGame[] = [];
+  let curDate = "";
+  for (const r of rows) {
+    const cells = r.row || [];
+    const dayCell = cells.find((c) => c.Class === "day");
+    if (dayCell) curDate = parseScheduleDate(dayCell.Text, season);
+    const playCell = cells.find((c) => c.Class === "play");
+    if (!playCell) continue;
+    const parsed = parsePlayCell(playCell.Text);
+    if (!parsed) continue;
+    games.push({ date: curDate, ...parsed });
+  }
+  return games;
+}
+
+// 각 팀의 최근 완료 10경기 결과 (왼쪽=오래된, 오른쪽=최신)
+export async function getRecentGames(season = "2026"): Promise<Record<string, GameResult[]>> {
+  const cacheKey = `recent_games_${season}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const seasonNum = parseInt(season);
+  const now = new Date();
+  const startMonth = now.getFullYear() === seasonNum ? now.getMonth() + 1 : 10;
+  const teams = Object.keys(TEAM_FULL_NAMES);
+
+  // 현재 월부터 역순으로 수집 (오래된 월을 앞에 붙여 시간 오름차순 유지)
+  const allGames: ScheduleGame[] = [];
+  for (let m = startMonth; m >= 3; m--) {
+    try {
+      const monthGames = await fetchScheduleMonth(season, m);
+      allGames.unshift(...monthGames);
+    } catch {
+      // 해당 월 수집 실패 시 무시
+    }
+    const counts = new Map<string, number>();
+    for (const g of allGames) {
+      const a = getTeamInfo(g.away).short;
+      const h = getTeamInfo(g.home).short;
+      counts.set(a, (counts.get(a) || 0) + 1);
+      counts.set(h, (counts.get(h) || 0) + 1);
+    }
+    if (teams.every((t) => (counts.get(t) || 0) >= 10)) break;
+  }
+
+  const result: Record<string, GameResult[]> = {};
+  for (const teamShort of teams) {
+    const last10 = allGames
+      .filter((g) => getTeamInfo(g.away).short === teamShort || getTeamInfo(g.home).short === teamShort)
+      .slice(-10);
+    result[teamShort] = last10.map((g) =>
+      getTeamInfo(g.away).short === teamShort ? g.awayResult : g.homeResult
+    );
+  }
+
+  setCached(cacheKey, result);
+  return result;
+}
+
 // ─── 팀 순위 ───────────────────────────────────────────────
 export async function getTeamRank() {
   const cacheKey = "team_rank";
@@ -106,6 +224,13 @@ export async function getTeamRank() {
 
   const $ = await fetchHtml(`${BASE_URL}/Record/TeamRank/TeamRankDaily.aspx`);
   const rows = parseRows($);
+
+  let recentGames: Record<string, GameResult[]> = {};
+  try {
+    recentGames = await getRecentGames("2026");
+  } catch {
+    // 최근 경기 수집 실패 시 빈 값으로 진행
+  }
 
   const data = rows.map((cols) => {
     const teamInfo = getTeamInfo(cols[1] ?? "");
@@ -123,6 +248,7 @@ export async function getTeamRank() {
       gameBehind: cols[7] ?? "",
       recentTen: cols[8] ?? "",
       streak: cols[9] ?? "",
+      recentGames: recentGames[teamInfo.short] ?? [],
       home: cols[10] ?? "",
       away: cols[11] ?? "",
     };
