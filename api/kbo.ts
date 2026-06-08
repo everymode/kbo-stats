@@ -150,6 +150,71 @@ function pIds($: cheerio.CheerioAPI): Map<string, string> {
 
 const PHOTO_CDN = "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle";
 
+// ─── 네이버 선수 연도별 통산 기록 (스태티즈 출처 WAR/wRC+/wOBA 포함) ─────
+const NAVER_API = "https://api-gw.sports.naver.com";
+const NAVER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "application/json",
+  Referer: "https://m.sports.naver.com/",
+  Origin: "https://m.sports.naver.com",
+};
+
+const num = (v: unknown) => { const n = parseFloat(String(v)); return Number.isFinite(n) ? n : 0; };
+const teamName = (t: unknown) => { const s = String(t ?? ""); return /^\d+$/.test(s) ? "" : s; };
+
+interface HitterSeason {
+  year: string; team: string; isCareer: boolean;
+  avg: string; games: number; ab: number; runs: number; hits: number; doubles: number; triples: number;
+  hr: number; tb: number; rbi: number; sb: number; cs: number; bb: number; hbp: number; so: number; gdp: number;
+  obp: number; slg: number; ops: number; isop: number; babip: number; woba: number; wrcPlus: number; war: number;
+}
+interface PitcherSeason {
+  year: string; team: string; isCareer: boolean;
+  era: number; games: number; wins: number; losses: number; saves: number; holds: number; ip: string;
+  hits: number; hr: number; bb: number; hbp: number; so: number; runs: number; er: number;
+  whip: number; k9: number; bb9: number; war: number; wpct: number; ops: number;
+}
+
+function mapHitterSeason(s: any): HitterSeason {
+  return {
+    year: String(s.gyear ?? ""), team: teamName(s.team), isCareer: String(s.gyear) === "통산",
+    avg: String(s.hra ?? "0"), games: num(s.gamenum), ab: num(s.ab), runs: num(s.run), hits: num(s.hit),
+    doubles: num(s.h2), triples: num(s.h3), hr: num(s.hr), tb: num(s.tb), rbi: num(s.rbi), sb: num(s.sb),
+    cs: num(s.cs), bb: num(s.bb), hbp: num(s.hp), so: num(s.kk), gdp: num(s.gd),
+    obp: num(s.obp), slg: num(s.slg), ops: num(s.ops), isop: num(s.isop), babip: num(s.babip),
+    woba: num(s.woba), wrcPlus: num(s.wrcPlus), war: num(s.war),
+  };
+}
+function mapPitcherSeason(s: any): PitcherSeason {
+  return {
+    year: String(s.gyear ?? ""), team: teamName(s.team), isCareer: String(s.gyear) === "통산",
+    era: num(s.era), games: num(s.gamenum), wins: num(s.w), losses: num(s.l), saves: num(s.sv), holds: num(s.hold),
+    ip: String(s.inn ?? "0"), hits: num(s.hit), hr: num(s.hr), bb: num(s.bb), hbp: num(s.hp), so: num(s.kk),
+    runs: num(s.r), er: num(s.er), whip: num(s.whip), k9: num(s.k9), bb9: num(s.bb9),
+    war: num(s.war), wpct: num(s.wra), ops: num(s.ops),
+  };
+}
+
+async function getPlayerRecord(playerId: string) {
+  const ck = `prec_${playerId}`;
+  const c = gc(ck); if (c) return c;
+  const res = await axios.get(`${NAVER_API}/players/kbo/${playerId}/playerend-record`, { headers: NAVER_HEADERS, timeout: 15000 });
+  const r = res.data?.result ?? {};
+  let rec = r.record;
+  if (typeof rec === "string") { try { rec = JSON.parse(rec); } catch { rec = {}; } }
+  const playerType: "hitter" | "pitcher" = r.playerType === "pitcher" ? "pitcher" : "hitter";
+  const raw: any[] = Array.isArray(rec?.season) ? rec.season : [];
+  // 연도 행만 오름차순(오래된→최근) 정렬, 통산 행은 맨 아래로
+  const yearRows = raw.filter((s) => String(s.gyear) !== "통산");
+  const careerRows = raw.filter((s) => String(s.gyear) === "통산");
+  yearRows.sort((a, b) => num(a.gyear) - num(b.gyear));
+  const ordered = [...yearRows, ...careerRows];
+  const seasons = playerType === "pitcher" ? ordered.map(mapPitcherSeason) : ordered.map(mapHitterSeason);
+  const result = { playerId, playerType, seasons, updatedAt: new Date().toISOString() };
+  sc(ck, result);
+  return result;
+}
+
 // ─── 최근 경기 결과 (일정 ajax 기반, 순서 보존) ─────────────
 type GameResult = "W" | "D" | "L";
 interface SchedGame { date: string; away: string; home: string; awayResult: GameResult; homeResult: GameResult; }
@@ -424,6 +489,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case "pitchers-all": return res.json(await getPitchersAll(String(req.query.season??"2026")));
       case "leaderboard": return res.json(await getLeaderboard(String(req.query.category??"avg"), String(req.query.season??"2026"), req.query.team?String(req.query.team):undefined, parseInt(String(req.query.limit??"30"))));
       case "search": { const q = String(req.query.q??""); if (!q) return res.json({data:[],query:""}); return res.json(await searchPlayers(q, String(req.query.season??"2026"))); }
+      case "player-record": { const pid = String(req.query.playerId??""); if (!pid) return res.status(400).json({error:"playerId required"}); return res.json(await getPlayerRecord(pid)); }
       default: return res.status(404).json({ error: "Unknown action", action });
     }
   } catch (e: any) {

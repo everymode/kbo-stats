@@ -49,6 +49,8 @@ export interface Hitter {
   rank: number;
   leaderboardRank?: number;
   playerName: string;
+  playerId?: string;
+  photoUrl?: string;
   teamName: string;
   teamShort: string;
   colors: TeamColors;
@@ -86,6 +88,8 @@ export interface Pitcher {
   rank: number;
   leaderboardRank?: number;
   playerName: string;
+  playerId?: string;
+  photoUrl?: string;
   teamName: string;
   teamShort: string;
   colors: TeamColors;
@@ -135,6 +139,70 @@ export interface LeaderboardResponse<T> {
   updatedAt: string;
 }
 
+// ─── 연도별 통산 기록 (네이버/스태티즈 출처) ─────────────────
+export interface HitterSeason {
+  year: string;
+  team: string;
+  isCareer: boolean;
+  avg: string;
+  games: number;
+  ab: number;
+  runs: number;
+  hits: number;
+  doubles: number;
+  triples: number;
+  hr: number;
+  tb: number;
+  rbi: number;
+  sb: number;
+  cs: number;
+  bb: number;
+  hbp: number;
+  so: number;
+  gdp: number;
+  obp: number;
+  slg: number;
+  ops: number;
+  isop: number;
+  babip: number;
+  woba: number;
+  wrcPlus: number;
+  war: number;
+}
+
+export interface PitcherSeason {
+  year: string;
+  team: string;
+  isCareer: boolean;
+  era: number;
+  games: number;
+  wins: number;
+  losses: number;
+  saves: number;
+  holds: number;
+  ip: string;
+  hits: number;
+  hr: number;
+  bb: number;
+  hbp: number;
+  so: number;
+  runs: number;
+  er: number;
+  whip: number;
+  k9: number;
+  bb9: number;
+  war: number;
+  wpct: number;
+  ops: number;
+}
+
+export interface PlayerRecord {
+  playerId: string;
+  playerType: "hitter" | "pitcher";
+  seasons: (HitterSeason | PitcherSeason)[];
+  updatedAt: string;
+}
+
 // ─── API 함수 ────────────────────────────────────────────────
 
 export const kboApi = {
@@ -180,6 +248,10 @@ export const kboApi = {
   /** 선수 검색 */
   searchPlayers: (q: string, season = "2026") =>
     fetchApi<{ data: (Hitter | Pitcher)[]; query: string }>("search", { q, season }),
+
+  /** 선수 연도별 통산 기록 (네이버/스태티즈 출처, WAR/wRC+/wOBA 포함) */
+  getPlayerRecord: (playerId: string) =>
+    fetchApi<PlayerRecord>("player-record", { playerId }),
 
   /** 헬스체크 */
   health: () => fetchApi<{ status: string; timestamp: string }>("health"),
