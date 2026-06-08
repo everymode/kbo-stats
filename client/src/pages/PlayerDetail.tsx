@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
-import { kboApi, Hitter, Pitcher, getTeamColor } from "@/lib/kboApi";
+import { kboApi, Hitter, Pitcher, getTeamColor, PlayerRecord, HitterSeason, PitcherSeason } from "@/lib/kboApi";
 import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, User } from "lucide-react";
@@ -61,12 +61,124 @@ function getPitcherRadarData(p: Pitcher) {
   ];
 }
 
+// ─── 연도별 통산 기록 테이블 ─────────────────────────────
+const HITTER_CAREER_COLS: { key: keyof HitterSeason; label: string; dec?: number }[] = [
+  { key: "team", label: "팀" },
+  { key: "avg", label: "타율" },
+  { key: "games", label: "경기" },
+  { key: "ab", label: "타수" },
+  { key: "hits", label: "안타" },
+  { key: "doubles", label: "2타" },
+  { key: "triples", label: "3타" },
+  { key: "hr", label: "홈런" },
+  { key: "rbi", label: "타점" },
+  { key: "runs", label: "득점" },
+  { key: "sb", label: "도루" },
+  { key: "bb", label: "볼넷" },
+  { key: "so", label: "삼진" },
+  { key: "obp", label: "출루", dec: 3 },
+  { key: "slg", label: "장타", dec: 3 },
+  { key: "ops", label: "OPS", dec: 3 },
+  { key: "isop", label: "ISOp", dec: 3 },
+  { key: "babip", label: "BABIP", dec: 3 },
+  { key: "woba", label: "wOBA", dec: 3 },
+  { key: "wrcPlus", label: "wRC+", dec: 1 },
+  { key: "war", label: "WAR", dec: 2 },
+];
+
+const PITCHER_CAREER_COLS: { key: keyof PitcherSeason; label: string; dec?: number }[] = [
+  { key: "team", label: "팀" },
+  { key: "era", label: "ERA", dec: 2 },
+  { key: "games", label: "경기" },
+  { key: "wins", label: "승" },
+  { key: "losses", label: "패" },
+  { key: "saves", label: "세이브" },
+  { key: "holds", label: "홀드" },
+  { key: "ip", label: "이닝" },
+  { key: "hits", label: "피안타" },
+  { key: "hr", label: "피홈런" },
+  { key: "bb", label: "볼넷" },
+  { key: "so", label: "삼진" },
+  { key: "er", label: "자책" },
+  { key: "whip", label: "WHIP", dec: 2 },
+  { key: "k9", label: "K/9", dec: 2 },
+  { key: "bb9", label: "BB/9", dec: 2 },
+  { key: "ops", label: "피OPS", dec: 3 },
+  { key: "war", label: "WAR", dec: 2 },
+];
+
+// 통산 행에서 집계되지 않는(0으로 오는) 고급 지표는 "-" 표기 (타자/투수 구분)
+const HITTER_CAREER_BLANK = new Set(["isop", "babip", "woba", "wrcPlus", "war"]);
+const PITCHER_CAREER_BLANK = new Set(["war", "k9", "bb9", "ops"]);
+
+function fmtCell(row: any, key: string, blankSet: Set<string>, dec?: number): string {
+  const v = row[key];
+  if (key === "team") return v || "-";
+  if (row.isCareer && blankSet.has(key) && Number(v) === 0) return "-";
+  if (typeof v === "number") {
+    if (dec != null) {
+      const s = v.toFixed(dec);
+      // 비율 스탯(0.xxx)은 앞 0 제거 (.287 형태)
+      return dec === 3 && Math.abs(v) < 1 ? s.replace(/^(-?)0\./, "$1.") : s;
+    }
+    return String(v);
+  }
+  if (typeof v === "string" && dec === 3) {
+    const n = parseFloat(v);
+    if (Number.isFinite(n) && Math.abs(n) < 1) return v.replace(/^(-?)0\./, "$1.");
+  }
+  return v ?? "-";
+}
+
+function CareerTable({ record }: { record: PlayerRecord }) {
+  const isHitter = record.playerType === "hitter";
+  const cols = isHitter ? HITTER_CAREER_COLS : PITCHER_CAREER_COLS;
+  const blankSet = isHitter ? HITTER_CAREER_BLANK : PITCHER_CAREER_BLANK;
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <h3 className="font-semibold text-sm">연도별 통산 기록</h3>
+        <span className="text-[0.65rem] text-muted-foreground">데이터 출처: 네이버 스포츠 · 스태티즈</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-border bg-secondary/30">
+              <th className="text-left py-2.5 px-3 font-bold text-muted-foreground sticky left-0 bg-secondary/30 z-10">시즌</th>
+              {cols.map((c) => (
+                <th key={c.key} className="text-center py-2.5 px-2.5 font-bold text-muted-foreground">{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {record.seasons.map((s) => (
+              <tr
+                key={s.year + s.team}
+                className={`border-b border-border/40 hover:bg-accent/40 transition-colors ${s.isCareer ? "bg-secondary/40 font-semibold" : ""}`}
+              >
+                <td className={`py-2 px-3 font-stat font-medium sticky left-0 z-10 ${s.isCareer ? "bg-secondary/60" : "bg-card"}`}>{s.year}</td>
+                {cols.map((c) => (
+                  <td key={c.key} className="text-center py-2 px-2.5 font-stat tabular-nums">
+                    {fmtCell(s, c.key as string, blankSet, c.dec)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function PlayerDetail() {
   const params = useParams<{ name: string }>();
   const playerName = decodeURIComponent(params.name || "");
   const [hitter, setHitter] = useState<Hitter | null>(null);
   const [pitcher, setPitcher] = useState<Pitcher | null>(null);
   const [loading, setLoading] = useState(true);
+  const [record, setRecord] = useState<PlayerRecord | null>(null);
+  const [recordLoading, setRecordLoading] = useState(false);
 
   useEffect(() => {
     if (!playerName) return;
@@ -94,6 +206,24 @@ export default function PlayerDetail() {
 
   const player = hitter || pitcher;
   const isHitter = !!hitter;
+  const playerId = (player as any)?.playerId as string | undefined;
+
+  // 연도별 통산 기록 로드 (네이버 career API, playerId 기반)
+  useEffect(() => {
+    if (!playerId) { setRecord(null); return; }
+    let cancelled = false;
+    const loadRecord = async () => {
+      setRecordLoading(true);
+      try {
+        const r = await kboApi.getPlayerRecord(playerId);
+        if (!cancelled) setRecord(r);
+      } catch { if (!cancelled) setRecord(null); }
+      finally { if (!cancelled) setRecordLoading(false); }
+    };
+    loadRecord();
+    return () => { cancelled = true; };
+  }, [playerId]);
+
   const teamColor = player ? getTeamColor(player.teamName) : { primary: "#666", secondary: "#fff" };
   const radarData = hitter ? getHitterRadarData(hitter) : pitcher ? getPitcherRadarData(pitcher) : [];
 
@@ -298,6 +428,13 @@ export default function PlayerDetail() {
           </div>
         </div>
       </div>
+
+      {/* 연도별 통산 기록 */}
+      {recordLoading ? (
+        <Skeleton className="h-48 w-full rounded-xl" />
+      ) : record && record.seasons.length > 0 ? (
+        <CareerTable record={record} />
+      ) : null}
     </div>
   );
 }
