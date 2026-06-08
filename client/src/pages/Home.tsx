@@ -26,45 +26,19 @@ function getTeamLogo(teamName: string) {
 }
 
 // ─── 최근 10경기 색상 블록 (오른쪽이 최신) ────────────────
-function RecentTenBlocks({ recentTen, streak }: { recentTen: string; streak: string }) {
-  if (!recentTen) return null;
-  const wMatch = recentTen.match(/(\d+)승/);
-  const dMatch = recentTen.match(/(\d+)무/);
-  const lMatch = recentTen.match(/(\d+)패/);
-  let w = parseInt(wMatch?.[1] ?? "0");
-  let d = parseInt(dMatch?.[1] ?? "0");
-  let l = parseInt(lMatch?.[1] ?? "0");
-
-  // streak로 최근 연속 기록 파악 (오른쪽 배치)
-  const sMatch = streak?.match(/(\d+)(승|패|무)/);
-  const sCount = parseInt(sMatch?.[1] ?? "0");
-  const sType = sMatch?.[2] ?? "";
-
-  // 연속 기록분을 총합에서 빼기
-  if (sType === "승") w = Math.max(0, w - sCount);
-  else if (sType === "패") l = Math.max(0, l - sCount);
-  else if (sType === "무") d = Math.max(0, d - sCount);
-
-  // 비연속 구간: 패→무→승 (오래된 것부터)
-  const blocks: ("w" | "d" | "l")[] = [];
-  for (let i = 0; i < l; i++) blocks.push("l");
-  for (let i = 0; i < d; i++) blocks.push("d");
-  for (let i = 0; i < w; i++) blocks.push("w");
-
-  // 연속 기록을 오른쪽 끝에 추가 (가장 최신)
-  const streakChar: "w" | "d" | "l" = sType === "승" ? "w" : sType === "무" ? "d" : "l";
-  for (let i = 0; i < sCount; i++) blocks.push(streakChar);
+function RecentTenBlocks({ recentGames }: { recentGames: ("W" | "D" | "L")[] }) {
+  if (!recentGames || recentGames.length === 0) return null;
 
   return (
     <div className="flex gap-[3px]">
-      {blocks.map((b, i) => (
+      {recentGames.map((b, i) => (
         <div
           key={i}
           className={`w-[18px] h-[18px] rounded text-[9px] font-bold flex items-center justify-center text-white ${
-            b === "w" ? "bg-green-600" : b === "d" ? "bg-gray-400" : "bg-red-500"
+            b === "W" ? "bg-green-600" : b === "D" ? "bg-gray-400" : "bg-red-500"
           }`}
         >
-          {b === "w" ? "W" : b === "d" ? "D" : "L"}
+          {b}
         </div>
       ))}
     </div>
@@ -210,7 +184,7 @@ export default function Home() {
                         </td>
                         <td className="py-3 px-2">
                           <div className="flex justify-center">
-                            <RecentTenBlocks recentTen={team.recentTen} streak={team.streak} />
+                            <RecentTenBlocks recentGames={team.recentGames} />
                           </div>
                         </td>
                         <td className="py-3 px-2 text-center font-stat font-medium">

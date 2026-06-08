@@ -40,6 +40,7 @@ export interface TeamRank {
   gameBehind: string;
   recentTen: string;
   streak: string;
+  recentGames: ("W" | "D" | "L")[];
   home: string;
   away: string;
 }

@@ -150,14 +150,89 @@ function pIds($: cheerio.CheerioAPI): Map<string, string> {
 
 const PHOTO_CDN = "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle";
 
+// ─── 최근 경기 결과 (일정 ajax 기반, 순서 보존) ─────────────
+type GameResult = "W" | "D" | "L";
+interface SchedGame { date: string; away: string; home: string; awayResult: GameResult; homeResult: GameResult; }
+
+function parseSchedDate(t: string, season: string): string {
+  const m = t.match(/(\d{1,2})\.(\d{1,2})/);
+  return m ? `${season}${m[1].padStart(2, "0")}${m[2].padStart(2, "0")}` : "";
+}
+function clsToResult(cls?: string): GameResult | null {
+  return cls === "win" ? "W" : cls === "lose" ? "L" : cls === "same" ? "D" : null;
+}
+function parsePlay(html: string): Omit<SchedGame, "date"> | null {
+  const $ = cheerio.load(`<div id="r">${html}</div>`);
+  const root = $("#r");
+  const top = root.children("span");
+  if (top.length < 2) return null;
+  const away = top.first().text().trim();
+  const home = top.last().text().trim();
+  const scores = root.find("em > span").filter((_: number, el: any) => !!$(el).attr("class"));
+  if (scores.length < 2) return null;
+  const ar = clsToResult($(scores[0]).attr("class"));
+  const hr = clsToResult($(scores[1]).attr("class"));
+  if (!ar || !hr) return null;
+  return { away, home, awayResult: ar, homeResult: hr };
+}
+async function fetchSchedMonth(season: string, month: number): Promise<SchedGame[]> {
+  const body = new URLSearchParams({ leId: "1", srIdList: "0,9,6", seasonId: season, gameMonth: String(month).padStart(2, "0"), teamId: "" });
+  const res = await axios.post(`${BASE_URL}/ws/Schedule.asmx/GetScheduleList`, body.toString(), {
+    headers: { ...HEADERS, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "X-Requested-With": "XMLHttpRequest", Referer: `${BASE_URL}/Schedule/Schedule.aspx` },
+    timeout: 15000,
+  });
+  const rows = (res.data?.rows ?? []) as Array<{ row: Array<{ Text: string; Class: string | null }> }>;
+  const games: SchedGame[] = [];
+  let curDate = "";
+  for (const r of rows) {
+    const cells = r.row || [];
+    const dayCell = cells.find((c) => c.Class === "day");
+    if (dayCell) curDate = parseSchedDate(dayCell.Text, season);
+    const playCell = cells.find((c) => c.Class === "play");
+    if (!playCell) continue;
+    const parsed = parsePlay(playCell.Text);
+    if (!parsed) continue;
+    games.push({ date: curDate, ...parsed });
+  }
+  return games;
+}
+async function getRecentGames(season = "2026"): Promise<Record<string, GameResult[]>> {
+  const ck = `recent_games_${season}`;
+  const cached = gc(ck); if (cached) return cached as Record<string, GameResult[]>;
+  const seasonNum = parseInt(season);
+  const now = new Date();
+  const startMonth = now.getFullYear() === seasonNum ? now.getMonth() + 1 : 10;
+  const teams = Object.keys(TEAM_FULL);
+  const allGames: SchedGame[] = [];
+  for (let m = startMonth; m >= 3; m--) {
+    try { allGames.unshift(...(await fetchSchedMonth(season, m))); } catch { /* skip */ }
+    const counts = new Map<string, number>();
+    for (const g of allGames) {
+      const a = ti(g.away).short, h = ti(g.home).short;
+      counts.set(a, (counts.get(a) || 0) + 1);
+      counts.set(h, (counts.get(h) || 0) + 1);
+    }
+    if (teams.every((t) => (counts.get(t) || 0) >= 10)) break;
+  }
+  const result: Record<string, GameResult[]> = {};
+  for (const t of teams) {
+    const last10 = allGames.filter((g) => ti(g.away).short === t || ti(g.home).short === t).slice(-10);
+    result[t] = last10.map((g) => (ti(g.away).short === t ? g.awayResult : g.homeResult));
+  }
+  sc(ck, result);
+  return result;
+}
+
 async function getTeamRank() {
   const c = gc("tr"); if (c) return c;
   const $ = await fH(`${BASE_URL}/Record/TeamRank/TeamRankDaily.aspx`);
+  let recentGames: Record<string, GameResult[]> = {};
+  try { recentGames = await getRecentGames("2026"); } catch { /* ignore */ }
   const data = pR($).map(c => {
     const t = ti(c[1] ?? "");
     return { rank: parseInt(c[0])||0, teamName: c[1]??"", teamShort: t.short, teamFull: t.full, colors: t.colors,
       games: parseInt(c[2])||0, wins: parseInt(c[3])||0, losses: parseInt(c[4])||0, draws: parseInt(c[5])||0,
-      winRate: c[6]??"", gameBehind: c[7]??"", recentTen: c[8]??"", streak: c[9]??"", home: c[10]??"", away: c[11]??"" };
+      winRate: c[6]??"", gameBehind: c[7]??"", recentTen: c[8]??"", streak: c[9]??"", recentGames: recentGames[t.short] ?? [], home: c[10]??"", away: c[11]??"" };
   }).filter(r => r.rank > 0);
   const result = { data, updatedAt: new Date().toISOString() }; sc("tr", result); return result;
 }
