@@ -155,10 +155,10 @@ function FADetailDialog({ item, open, onClose }: {
 
   const gradeDesc =
     grade === "A"
-      ? "소속팀 내 연봉 상위 3위 이내 & 리그 연봉 30위 이내 — 인적보상 대상, 최고 시장가치"
+      ? "최근 3년 평균 연봉 기준 소속 구단 1~3위 & 리그 전체 1~30위 — 인적보상 대상 (보호 20인)"
       : grade === "B"
-        ? "리그 연봉 중위권 — 인적보상 대상, 안정적 전력"
-        : "리그 연봉 하위권 — 보상 의무 없이 자유 이적 가능";
+        ? "소속 구단 4~10위 또는 리그 31~60위, 재FA 해당 시 B 적용 — 인적보상 대상 (보호 25인)"
+        : "만 35세 이상 신규 FA, 다회차 FA, 또는 기타 — 보상금만 (전년 연봉 150%)";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -180,7 +180,7 @@ function FADetailDialog({ item, open, onClose }: {
             <InfoChip
               icon={Info}
               label="유형"
-              value={player.isReFA ? "재FA" : "첫 FA"}
+              value={player.faType}
             />
           </div>
 
@@ -197,6 +197,11 @@ function FADetailDialog({ item, open, onClose }: {
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">{gradeDesc}</p>
+              {player.gradeNote && (
+                <p className="text-xs text-muted-foreground/70 mt-1.5 italic">
+                  ※ {player.gradeNote}
+                </p>
+              )}
             </div>
           </section>
 
@@ -209,35 +214,46 @@ function FADetailDialog({ item, open, onClose }: {
                   {formatAmount(contract.totalAmount)}
                 </span>
                 <span className="text-muted-foreground text-sm">
-                  / {contract.years}년 (연평균 {contract.annualAvg}억)
+                  / {contract.years} (연평균 {contract.annualAvg}억)
                 </span>
               </div>
 
-              {/* 산출 근거 */}
-              <div className="space-y-2 text-sm">
-                <div className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-                  산출 근거
+              {/* 현실적 범위 */}
+              <div className="mb-4">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">
+                  현실적 범위
                 </div>
-                <BreakdownRow
-                  label="기본 연간 성적가치"
-                  value={`${contract.breakdown.baseAPV}억/년`}
-                  desc="최근 3시즌 평균 성적 기반"
-                />
-                <BreakdownRow
-                  label="나이 계수"
-                  value={`×${contract.breakdown.ageFactor.toFixed(2)}`}
-                  desc={player.age <= 29 ? "전성기 프리미엄" : player.age <= 33 ? "안정적" : "하락 반영"}
-                />
-                <BreakdownRow
-                  label="등급 프리미엄"
-                  value={`×${contract.breakdown.gradePremium.toFixed(2)}`}
-                  desc={grade === "A" ? "입찰 경쟁 프리미엄" : grade === "C" ? "시장 할인" : "기본"}
-                />
-                <BreakdownRow
-                  label="계약 연수"
-                  value={`${contract.years}년`}
-                  desc={`만 ${player.age}세 기준`}
-                />
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>{contract.rangeMin}억</span>
+                  <span className="font-bold text-primary">{contract.totalAmount}억</span>
+                  <span>{contract.rangeMax}억</span>
+                </div>
+                <div className="h-2.5 bg-secondary rounded-full relative overflow-hidden">
+                  <div
+                    className="absolute h-full bg-primary/20 rounded-full"
+                    style={{ left: '0%', width: '100%' }}
+                  />
+                  <div
+                    className="absolute h-full w-2 bg-primary rounded-full -translate-x-1/2"
+                    style={{
+                      left: `${Math.max(5, Math.min(95, ((contract.totalAmount - contract.rangeMin) / (contract.rangeMax - contract.rangeMin)) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 판단 근거 */}
+              <div className="p-3 bg-secondary/50 rounded-lg">
+                <div className="text-xs font-semibold text-muted-foreground mb-1">판단 근거</div>
+                <p className="text-sm text-foreground leading-relaxed">{contract.rationale}</p>
+              </div>
+
+              {/* 계약 구조 */}
+              <div className="mt-3 space-y-2 text-sm">
+                <BreakdownRow label="계약 기간" value={contract.years} desc={`만 ${player.age}세 기준`} />
+                <BreakdownRow label="예상 총액" value={`${contract.totalAmount}억`} desc="계약금+연봉+옵션 최대총액" />
+                <BreakdownRow label="연평균" value={`${contract.annualAvg}억`} />
+                <BreakdownRow label="직전 연봉" value={`${player.previousSalary}억`} />
               </div>
             </div>
           </section>
@@ -248,7 +264,7 @@ function FADetailDialog({ item, open, onClose }: {
             <div className="bg-card border border-border rounded-xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className={`font-bold text-sm ${
-                  compensation.type === "보상 없음"
+                  compensation.type === "보상금만"
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-amber-600 dark:text-amber-400"
                 }`}>
@@ -258,22 +274,29 @@ function FADetailDialog({ item, open, onClose }: {
                   (직전 연봉: {player.previousSalary}억)
                 </span>
               </div>
-              {compensation.option1 && (
+              {compensation.type === "인적보상 대상" && (
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/50">
                     <span className="text-xs font-bold text-muted-foreground shrink-0 mt-0.5">옵션 1</span>
                     <span>{compensation.option1}</span>
                   </div>
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/50">
-                    <span className="text-xs font-bold text-muted-foreground shrink-0 mt-0.5">옵션 2</span>
-                    <span>{compensation.option2}</span>
-                  </div>
+                  {compensation.option2 && (
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/50">
+                      <span className="text-xs font-bold text-muted-foreground shrink-0 mt-0.5">옵션 2</span>
+                      <span>{compensation.option2}</span>
+                    </div>
+                  )}
                 </div>
               )}
-              {compensation.type === "보상 없음" && (
-                <p className="text-sm text-muted-foreground">
-                  C등급 FA는 이적 시 원소속팀에 대한 보상 의무가 없습니다.
-                </p>
+              {compensation.type === "보상금만" && (
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/50">
+                    <span>{compensation.option1}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    C등급 FA는 인적보상 없이 보상금만 원소속팀에 지급합니다.
+                  </p>
+                </div>
               )}
             </div>
           </section>
