@@ -31,6 +31,15 @@ const cache = new Map<string, { data: unknown; ts: number }>();
 function gc(k: string) { const e = cache.get(k); return e && Date.now() - e.ts < 300000 ? e.data : null; }
 function sc(k: string, d: unknown) { cache.set(k, { data: d, ts: Date.now() }); }
 
+// 동일 키의 동시 요청이 중복 크롤링하지 않도록 진행 중인 Promise를 공유한다.
+const inflight = new Map<string, Promise<unknown>>();
+function dedup<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const ex = inflight.get(key); if (ex) return ex as Promise<T>;
+  const p = (async () => { try { return await fn(); } finally { inflight.delete(key); } })();
+  inflight.set(key, p);
+  return p;
+}
+
 function pI(s: string) {
   if (!s) return 0; const p = s.trim().split(" ");
   if (p.length === 1) return parseFloat(p[0]) || 0;
@@ -246,9 +255,13 @@ function parsePlay(html: string): Omit<SchedGame, "date"> | null {
   const home = top.last().text().trim();
   const scores = root.find("em > span").filter((_: number, el: any) => !!$(el).attr("class"));
   if (scores.length < 2) return null;
+  const aScore = $(scores[0]).text().trim();
+  const hScore = $(scores[1]).text().trim();
   const ar = clsToResult($(scores[0]).attr("class"));
   const hr = clsToResult($(scores[1]).attr("class"));
   if (!ar || !hr) return null;
+  // 예정/미경기는 '0 vs 0' + class="same"으로 내려와 무승부(D)로 오인됨 → 제외
+  if (ar === "D" && hr === "D" && aScore === "0" && hScore === "0") return null;
   return { away, home, awayResult: ar, homeResult: hr };
 }
 async function fetchSchedMonth(season: string, month: number): Promise<SchedGame[]> {
@@ -357,6 +370,7 @@ async function getHittersCombined(season = "2026", page = 1) {
 
 async function getHittersAll(season = "2026") {
   const ck = `ha_${season}`; const c = gc(ck); if (c) return c;
+  return dedup(ck, async () => {
   const url = `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`;
   const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 15, season);
   const seen = new Set<string>(); const data: any[] = [];
@@ -400,10 +414,12 @@ async function getHittersAll(season = "2026") {
     for (const p of data) { const r = rm.get(p.playerName) || {}; p.sb = r.sb||0; p.cs = r.cs||0; p.sba = r.sba||0; }
   } catch {}
   const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
+  });
 }
 
 async function getPitchersAll(season = "2026") {
   const ck = `pa_${season}`; const c = gc(ck); if (c) return c;
+  return dedup(ck, async () => {
   const url = `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`;
   const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 15, season);
   const seen = new Set<string>(); const data: any[] = [];
@@ -428,6 +444,7 @@ async function getPitchersAll(season = "2026") {
     }
   }
   const result = { data, season, updatedAt: new Date().toISOString() }; sc(ck, result); return result;
+  });
 }
 async function getPitchers(season = "2026", page = 1) {
   const ck = `p_${season}_${page}`; const c = gc(ck); if (c) return c;
