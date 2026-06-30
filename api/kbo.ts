@@ -106,13 +106,21 @@ async function fHPages(url: string, params: Record<string, string>, maxPages: nu
   const results: cheerio.CheerioAPI[] = [$cur];
   if (maxPages <= 1) return results;
 
-  // 2단계: POST로 나머지 페이지 순차 요청
-  let curForm = extractForm($cur);
+  // KBO pager는 한 그룹에 5개 페이지 번호(btnNo{p})만 노출하고,
+  // 다음 그룹(6,11,16...)으로는 '다음' 버튼(btnNext)으로 이동해야 한다.
+  const PFX = 'ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$';
+  const firstKey = ($: cheerio.CheerioAPI) => { const r = pR($); return r[0]?.join('|') ?? ''; };
+  const seenFirst = new Set<string>([firstKey($cur)]);
+
+  // 2단계: pager를 따라 순차 페이지 이동
+  let $page = $cur;
   for (let p = 2; p <= maxPages; p++) {
-    curForm['__EVENTTARGET'] = `ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo${p}`;
-    curForm['__EVENTARGUMENT'] = '';
+    const target = (p % 5 === 1) ? `${PFX}btnNext` : `${PFX}btnNo${p}`;
+    const fd = extractForm($page);
+    fd['__EVENTTARGET'] = target;
+    fd['__EVENTARGUMENT'] = '';
     const form = new URLSearchParams();
-    for (const [k, v] of Object.entries(curForm)) form.append(k, v);
+    for (const [k, v] of Object.entries(fd)) form.append(k, v);
 
     try {
       const rN = await axios.post(fullUrl, form.toString(), {
@@ -122,8 +130,11 @@ async function fHPages(url: string, params: Record<string, string>, maxPages: nu
       const $N = cheerio.load(rN.data);
       const rows = pR($N);
       if (rows.length === 0) break; // 더 이상 데이터 없음
+      const fk = firstKey($N);
+      if (seenFirst.has(fk)) break; // 같은 페이지 반복 = 끝 도달
+      seenFirst.add(fk);
       results.push($N);
-      curForm = extractForm($N);
+      $page = $N;
     } catch { break; }
   }
   return results;
@@ -347,7 +358,7 @@ async function getHittersCombined(season = "2026", page = 1) {
 async function getHittersAll(season = "2026") {
   const ck = `ha_${season}`; const c = gc(ck); if (c) return c;
   const url = `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`;
-  const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 5, season);
+  const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 15, season);
   const seen = new Set<string>(); const data: any[] = [];
   for (const $ of pages$) {
     const rows = pR($);
@@ -367,7 +378,7 @@ async function getHittersAll(season = "2026") {
   }
   // OPS 데이터 병합
   try {
-    const ops$ = await fHPages(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, { leagueId: "1", sort: "Game_Cn" }, 5, season);
+    const ops$ = await fHPages(`${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`, { leagueId: "1", sort: "Game_Cn" }, 15, season);
     const om = new Map<string, any>();
     for (const $ of ops$) { for (const c of pR($)) { const n = c[1]; if (n && !om.has(n)) om.set(n, { bb: parseInt(c[4])||0, ibb: parseInt(c[5])||0, hbp: parseInt(c[6])||0, so: parseInt(c[7])||0, gdp: parseInt(c[8])||0, slg: c[9]??"0", obp: c[10]??"0", ops: c[11]??"0" }); } }
     for (const p of data) {
@@ -383,7 +394,7 @@ async function getHittersAll(season = "2026") {
   } catch {}
   // 도루 데이터 병합 (Runner/Basic.aspx)
   try {
-    const run$ = await fHPages(`${BASE_URL}/Record/Player/Runner/Basic.aspx`, { leagueId: "1", sort: "Game_Cn" }, 5, season);
+    const run$ = await fHPages(`${BASE_URL}/Record/Player/Runner/Basic.aspx`, { leagueId: "1", sort: "Game_Cn" }, 15, season);
     const rm = new Map<string, any>();
     for (const $ of run$) { for (const c of pR($)) { const n = c[1]; if (n && !rm.has(n)) rm.set(n, { sb: parseInt(c[5])||0, cs: parseInt(c[6])||0, sba: parseInt(c[4])||0 }); } }
     for (const p of data) { const r = rm.get(p.playerName) || {}; p.sb = r.sb||0; p.cs = r.cs||0; p.sba = r.sba||0; }
@@ -394,7 +405,7 @@ async function getHittersAll(season = "2026") {
 async function getPitchersAll(season = "2026") {
   const ck = `pa_${season}`; const c = gc(ck); if (c) return c;
   const url = `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`;
-  const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 5, season);
+  const pages$ = await fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 15, season);
   const seen = new Set<string>(); const data: any[] = [];
   for (const $ of pages$) {
     const rows = pR($);
