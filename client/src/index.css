@@ -40,48 +40,57 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-draw: var(--draw);
+  --color-note: var(--note);
+  --color-border-strong: var(--border-strong);
+  --font-serif: "Noto Serif KR", "IBM Plex Serif", Georgia, serif;
 }
 
-/* ─── 라이트 테마 (기본 :root) — Sunny Ballpark ─────────── */
+/* ─── 라이트 테마 (기본 :root) — Press Box Ledger ───────── */
 :root {
-  --radius: 0.75rem;
+  --radius: 6px;
 
-  --background: #f5f3ef;
-  --foreground: #1a1a1a;
-  --card: #FFFFFF;
-  --card-foreground: #1a1a1a;
-  --popover: #FFFFFF;
-  --popover-foreground: #1a1a1a;
-  --primary: #2563EB;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F1F5F9;
-  --secondary-foreground: #334155;
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
-  --accent: #F1F5F9;
-  --accent-foreground: #0F172A;
-  --destructive: #DC2626;
+  --background: #f7f3ea;
+  --foreground: #111827;
+  --card: #fbf8f0;
+  --card-foreground: #111827;
+  --popover: #fffdf7;
+  --popover-foreground: #111827;
+  --primary: #183b59;
+  --primary-foreground: #fffdf7;
+  --secondary: #ede7db;
+  --secondary-foreground: #111827;
+  --muted: #ede7db;
+  --muted-foreground: #6b665c;
+  --accent: #e7eef5;
+  --accent-foreground: #183b59;
+  --destructive: #b42318;
   --destructive-foreground: #FFFFFF;
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #2563EB;
-  --chart-1: #2563EB;
-  --chart-2: #16A34A;
-  --chart-3: #EAB308;
-  --chart-4: #7C3AED;
-  --chart-5: #DC2626;
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #0F172A;
-  --sidebar-primary: #2563EB;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F1F5F9;
-  --sidebar-accent-foreground: #0F172A;
-  --sidebar-border: #E2E8F0;
-  --sidebar-ring: #2563EB;
+  --border: #d8d0c2;
+  --input: #d8d0c2;
+  --ring: #2f5d8c;
+  --chart-1: #183b59;
+  --chart-2: #16824a;
+  --chart-3: #b7791f;
+  --chart-4: #6f4e37;
+  --chart-5: #b42318;
+  --sidebar: #f3eee4;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #183b59;
+  --sidebar-primary-foreground: #fffdf7;
+  --sidebar-accent: #e7eef5;
+  --sidebar-accent-foreground: #183b59;
+  --sidebar-border: #d8d0c2;
+  --sidebar-ring: #2f5d8c;
 
-  /* 디자인 시스템 추가 변수 */
-  --success: #16A34A;
-  --warning: #EAB308;
+  /* 디자인 시스템 추가 변수 (Press Box Ledger) */
+  --success: #16824a;
+  --warning: #b7791f;
+  --draw: #7a808a;
+  --note: #6f4e37;
+  --border-strong: #9c9385;
 
   /* KBO 구단 컬러 변수 */
   --team-kia: #EA0029;
@@ -96,43 +105,46 @@
   --team-kiwoom: #820024;
 }
 
-/* ─── 다크 테마 (.dark 클래스) — 야간 경기장 ───────────── */
+/* ─── 다크 테마 (.dark 클래스) — 야간 기록실 ───────────── */
 .dark {
-  --background: #0F172A;
-  --foreground: #F1F5F9;
-  --card: #1E293B;
-  --card-foreground: #F1F5F9;
-  --popover: #1E293B;
-  --popover-foreground: #F1F5F9;
-  --primary: #60A5FA;
-  --primary-foreground: #0F172A;
-  --secondary: #334155;
-  --secondary-foreground: #CBD5E1;
-  --muted: #334155;
-  --muted-foreground: #94A3B8;
-  --accent: #334155;
-  --accent-foreground: #F1F5F9;
-  --destructive: #EF4444;
+  --background: #101722;
+  --foreground: #f3ede2;
+  --card: #172131;
+  --card-foreground: #f3ede2;
+  --popover: #111a27;
+  --popover-foreground: #f3ede2;
+  --primary: #7db7e8;
+  --primary-foreground: #07111f;
+  --secondary: #1d2735;
+  --secondary-foreground: #f3ede2;
+  --muted: #1d2735;
+  --muted-foreground: #9fa9b7;
+  --accent: #223047;
+  --accent-foreground: #d8ebff;
+  --destructive: #ff5a5f;
   --destructive-foreground: #FFFFFF;
-  --border: #334155;
-  --input: #334155;
-  --ring: #60A5FA;
-  --chart-1: #60A5FA;
-  --chart-2: #4ADE80;
-  --chart-3: #FACC15;
-  --chart-4: #A78BFA;
-  --chart-5: #F87171;
-  --sidebar: #1E293B;
-  --sidebar-foreground: #F1F5F9;
-  --sidebar-primary: #60A5FA;
-  --sidebar-primary-foreground: #0F172A;
-  --sidebar-accent: #334155;
-  --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: #334155;
-  --sidebar-ring: #60A5FA;
+  --border: #2c394a;
+  --input: #2c394a;
+  --ring: #7db7e8;
+  --chart-1: #7db7e8;
+  --chart-2: #21b36b;
+  --chart-3: #f1b94e;
+  --chart-4: #c8a06d;
+  --chart-5: #ff5a5f;
+  --sidebar: #111a27;
+  --sidebar-foreground: #f3ede2;
+  --sidebar-primary: #7db7e8;
+  --sidebar-primary-foreground: #07111f;
+  --sidebar-accent: #223047;
+  --sidebar-accent-foreground: #d8ebff;
+  --sidebar-border: #2c394a;
+  --sidebar-ring: #7db7e8;
 
-  --success: #4ADE80;
-  --warning: #FACC15;
+  --success: #21b36b;
+  --warning: #f1b94e;
+  --draw: #8e99a8;
+  --note: #c8a06d;
+  --border-strong: #607086;
 }
 
 @layer base {
@@ -158,7 +170,7 @@
   }
 
   .font-stat {
-    font-family: 'Inter', 'Roboto', 'JetBrains Mono', monospace;
+    font-family: 'Roboto Condensed', 'Inter', 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
 
@@ -166,6 +178,10 @@
     font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
     font-weight: 800;
     letter-spacing: -0.01em;
+  }
+
+  .font-serif {
+    font-family: 'Noto Serif KR', 'IBM Plex Serif', Georgia, serif;
   }
 }
 
@@ -198,24 +214,16 @@
     }
   }
 
+  /* 종이 겹침 카드 — Press Box Ledger */
   .card-glow {
     background: var(--card);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
-    border-radius: 12px;
-    transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1), transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
-  }
-  .dark .card-glow {
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgb(17 24 39 / 0.08);
+    border-radius: 6px;
+    transition: border-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
   }
   .card-glow:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1), 0 8px 32px rgba(0,0,0,0.08);
-  }
-  .dark .card-glow:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.5);
-  }
-  .dark .card-glow:hover {
-    box-shadow: 0 0 0 1px oklch(0.82 0.18 200 / 30%), 0 8px 40px oklch(0 0 0 / 60%);
+    border-color: var(--border-strong);
   }
 
   .team-badge {
@@ -237,30 +245,25 @@
   .stat-card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    transition: all 200ms cubic-bezier(0.23, 1, 0.32, 1);
+    border-radius: 6px;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgb(17 24 39 / 0.08);
+    transition: border-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
   }
   .stat-card:hover {
-    border-color: var(--primary);
-    box-shadow: 0 4px 16px rgba(37,99,235,0.1);
-    transform: translateY(-2px);
-  }
-  .dark .stat-card:hover {
-    box-shadow: 0 4px 16px rgba(96,165,250,0.15);
+    border-color: var(--border-strong);
   }
 
   .nav-link {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
+    padding: 0.625rem 1rem;
+    border-radius: 4px;
     color: var(--muted-foreground);
     font-size: 0.875rem;
     font-weight: 500;
-    transition: all 150ms cubic-bezier(0.23, 1, 0.32, 1);
+    transition: all 120ms cubic-bezier(0.23, 1, 0.32, 1);
     text-decoration: none;
     border-left: none;
   }
@@ -269,13 +272,10 @@
     color: var(--foreground);
   }
   .nav-link.active {
-    background: #EFF6FF;
+    background: var(--accent);
     color: var(--primary);
-    font-weight: 600;
-    box-shadow: inset 3px 0 0 var(--primary);
-  }
-  .dark .nav-link.active {
-    background: rgba(96,165,250,0.12);
+    font-weight: 700;
+    box-shadow: inset 2px 0 0 var(--primary);
   }
 
   @keyframes countup {
@@ -297,40 +297,33 @@
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
-  .dark ::-webkit-scrollbar-thumb { background: #475569; }
-  .dark ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
   .data-table th {
     font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-weight: 900;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--muted-foreground);
-    padding: 0.875rem 0.75rem;
-    border-bottom: 2px solid var(--border);
+    background: var(--muted);
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border-strong);
     border-left: none;
     border-right: none;
   }
   .data-table td {
-    padding: 0.875rem 0.75rem;
-    border-bottom: 1px solid #F1F5F9;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border);
     border-left: none;
     border-right: none;
     font-size: 0.875rem;
   }
-  .dark .data-table td {
-    border-bottom-color: #334155;
-  }
   .data-table tr:hover td {
-    background: #F8FAFC;
-  }
-  .dark .data-table tr:hover td {
-    background: #1E293B;
+    background: var(--accent);
   }
   .data-table tr {
-    transition: background 150ms ease;
+    transition: background 120ms ease;
   }
 }
 

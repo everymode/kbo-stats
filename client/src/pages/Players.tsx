@@ -73,25 +73,22 @@ function PlayerRow({ player, type, index, visibleCols }: {
 
   return (
     <Link href={`/players/${encodeURIComponent(player.playerName)}`}>
-      <div
-        className="flex items-center gap-2 py-2.5 px-4 rounded-lg hover:bg-accent/60 transition-all cursor-pointer animate-fade-in-up border border-transparent hover:border-border"
-        style={{ animationDelay: `${index * 20}ms` }}
-      >
-        <div className="w-7 text-center font-stat text-xs text-muted-foreground shrink-0">
+      <div className="flex cursor-pointer items-center gap-2 border-b border-border px-4 py-2.5 transition-colors hover:bg-accent">
+        <div className="w-7 shrink-0 text-center font-stat text-xs font-bold text-muted-foreground">
           {player.rank}
         </div>
-        <div className="w-32 shrink-0 flex items-center gap-2">
+        <div className="flex w-32 shrink-0 items-center gap-2">
           <TeamBadge teamName={player.teamName} size="sm" />
-          <span className="font-semibold text-sm hover:text-primary transition-colors truncate">{player.playerName}</span>
+          <span className="truncate text-sm font-bold text-foreground transition-colors hover:text-primary">{player.playerName}</span>
         </div>
-        <div className="flex-1 grid gap-1 text-right" style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}>
+        <div className="grid flex-1 gap-1 text-right" style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}>
           {visibleCols.map((col, ci) => {
             const val = getValue(col.key);
             const isSaber = isHitter ? SABER_HITTER_KEYS.has(col.key) : SABER_PITCHER_KEYS.has(col.key);
             const isMain = ci === 0;
             return (
               <div key={col.key} title={col.title}>
-                <div className={`font-stat text-xs font-semibold ${isMain ? "text-primary" : isSaber ? "text-blue-400 dark:text-blue-300" : "text-foreground"}`}>
+                <div className={`font-stat text-xs font-semibold ${isMain ? "font-black text-primary" : isSaber ? "text-note" : "text-foreground"}`}>
                   {val}
                 </div>
               </div>
@@ -174,116 +171,123 @@ export default function Players() {
   const tableMinWidth = 180 + visibleCols.length * 54;
 
   return (
-    <div className="p-4 lg:p-8">
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Users size={18} className="text-primary" />
-        </div>
-        <h1 className="font-display text-3xl lg:text-4xl leading-tight">선수</h1>
-      </div>
-      <p className="text-muted-foreground text-sm mb-8">2026 KBO 리그 — 선수 기록 조회</p>
+    <div className="min-h-[calc(100vh-65px)] bg-background text-foreground">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-7 sm:px-6 lg:px-8">
+        <header className="mb-6 border-b border-border-strong pb-5">
+          <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            <Users size={14} />
+            Player records
+          </p>
+          <h1 className="font-serif text-4xl font-black leading-tight text-foreground">
+            선수 기록
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            2026 KBO 리그 · 선수 기록 조회 · 데이터 출처: KBO 공식 사이트
+          </p>
+        </header>
 
-      {/* 필터 */}
-      <div className="bg-card border border-border rounded-2xl p-5 mb-5 flex flex-wrap gap-3 items-center shadow-sm">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "hitter" | "pitcher")}>
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="hitter">타자</TabsTrigger>
-            <TabsTrigger value="pitcher">투수</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* 필터 */}
+        <section className="mb-5 flex flex-wrap items-center gap-3 rounded-[6px] border border-border bg-muted px-4 py-3 shadow-[0_1px_2px_rgb(17_24_39/0.08)] sm:px-5">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "hitter" | "pitcher")}>
+            <TabsList className="rounded-[4px] bg-secondary">
+              <TabsTrigger value="hitter" className="rounded-[3px]">타자</TabsTrigger>
+              <TabsTrigger value="pitcher" className="rounded-[3px]">투수</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        <Select value={team} onValueChange={setTeam}>
-          <SelectTrigger className="w-28 h-9 bg-secondary border-border text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TEAMS.map((t) => (
-              <SelectItem key={t} value={t}>{t}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={team} onValueChange={setTeam}>
+            <SelectTrigger className="h-9 w-28 rounded-[4px] border-input bg-popover text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TEAMS.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9 h-9 bg-secondary border-border text-sm"
-            placeholder="선수명 검색..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        {/* 규정타석/규정이닝 토글 */}
-        <button
-          onClick={() => setQualifiedOnly(!qualifiedOnly)}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-            qualifiedOnly
-              ? "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
-              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent border border-border"
-          }`}
-        >
-          {tab === "hitter" ? "규정타석" : "규정이닝"} {qualifiedOnly ? "ON" : "OFF"}
-        </button>
-
-        <div className="text-xs text-muted-foreground font-medium ml-auto">{filtered.length}명</div>
-      </div>
-
-      {/* 테이블 */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: `${tableMinWidth}px` }}>
-            {/* 헤더 */}
-            <div className="flex items-center gap-2 py-3 px-4 border-b-2 border-border bg-secondary/30">
-              <div className="w-7 text-xs font-bold text-muted-foreground uppercase">#</div>
-              <div className="w-32 text-xs font-bold text-muted-foreground uppercase">선수</div>
-              <div className="flex-1 grid gap-1 text-right" style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}>
-                {visibleCols.map((col) => {
-                  const isSaber = SABER_HITTER_KEYS.has(col.key) || SABER_PITCHER_KEYS.has(col.key);
-                  const isActive = sortKey === col.key;
-                  return (
-                    <button
-                      key={col.key}
-                      title={`${col.title} (클릭하여 정렬)`}
-                      className={`flex items-center justify-end gap-0.5 text-xs font-semibold uppercase cursor-pointer select-none transition-colors hover:text-primary ${
-                        isActive ? "text-primary" : isSaber ? "text-blue-400 dark:text-blue-300" : "text-muted-foreground"
-                      }`}
-                      onClick={() => handleSort(col.key)}
-                    >
-                      {col.label}
-                      {isActive ? (
-                        sortDir === "desc" ? <ArrowDown size={11} /> : <ArrowUp size={11} />
-                      ) : (
-                        <ArrowUpDown size={10} className="opacity-30" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="p-4 space-y-2">
-                {Array.from({ length: 15 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">검색 결과가 없습니다.</div>
-            ) : (
-              <div className="divide-y divide-border/30 p-1">
-                {sorted.map((player, i) => (
-                  <PlayerRow
-                    key={`${player.playerName}-${i}`}
-                    player={player}
-                    type={tab}
-                    index={i}
-                    visibleCols={visibleCols}
-                  />
-                ))}
-              </div>
-            )}
+          <div className="relative max-w-xs flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="h-9 rounded-[4px] border-input bg-popover pl-9 text-sm"
+              placeholder="선수명 검색..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-        </div>
+
+          {/* 규정타석/규정이닝 토글 */}
+          <button
+            onClick={() => setQualifiedOnly(!qualifiedOnly)}
+            className={`rounded-[4px] border px-3.5 py-2 text-xs font-bold transition-colors ${
+              qualifiedOnly
+                ? "border-success/50 bg-success/10 text-success"
+                : "border-border bg-popover text-muted-foreground hover:border-border-strong hover:text-foreground"
+            }`}
+          >
+            {tab === "hitter" ? "규정타석" : "규정이닝"} {qualifiedOnly ? "ON" : "OFF"}
+          </button>
+
+          <div className="ml-auto font-stat text-xs font-bold text-muted-foreground">{filtered.length}명</div>
+        </section>
+
+        {/* 테이블 */}
+        <section className="overflow-hidden rounded-[6px] border border-border bg-card shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: `${tableMinWidth}px` }}>
+              {/* 헤더 */}
+              <div className="flex items-center gap-2 border-b border-border-strong bg-muted px-4 py-2.5">
+                <div className="w-7 text-xs font-black uppercase text-muted-foreground">#</div>
+                <div className="w-32 text-xs font-black uppercase text-muted-foreground">선수</div>
+                <div className="grid flex-1 gap-1 text-right" style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}>
+                  {visibleCols.map((col) => {
+                    const isSaber = SABER_HITTER_KEYS.has(col.key) || SABER_PITCHER_KEYS.has(col.key);
+                    const isActive = sortKey === col.key;
+                    return (
+                      <button
+                        key={col.key}
+                        title={`${col.title} (클릭하여 정렬)`}
+                        className={`flex cursor-pointer select-none items-center justify-end gap-0.5 text-xs font-black uppercase transition-colors hover:text-primary ${
+                          isActive ? "text-primary" : isSaber ? "text-note" : "text-muted-foreground"
+                        }`}
+                        onClick={() => handleSort(col.key)}
+                      >
+                        {col.label}
+                        {isActive ? (
+                          sortDir === "desc" ? <ArrowDown size={11} /> : <ArrowUp size={11} />
+                        ) : (
+                          <ArrowUpDown size={10} className="opacity-30" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="space-y-2 p-4">
+                  {Array.from({ length: 15 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full rounded-[4px] bg-secondary" />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">검색 결과가 없습니다.</div>
+              ) : (
+                <div>
+                  {sorted.map((player, i) => (
+                    <PlayerRow
+                      key={`${player.playerName}-${i}`}
+                      player={player}
+                      type={tab}
+                      index={i}
+                      visibleCols={visibleCols}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

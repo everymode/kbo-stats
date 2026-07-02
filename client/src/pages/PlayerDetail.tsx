@@ -16,14 +16,14 @@ function StatCard({ label, value, highlight = false, saber = false, desc }: {
 }) {
   return (
     <div
-      className={`stat-card text-center ${highlight ? "border-primary/30" : saber ? "border-blue-500/20" : ""}`}
+      className={`stat-card text-center ${highlight ? "border-primary/40" : saber ? "border-note/30" : ""}`}
       title={desc}
     >
-      <div className={`font-display text-2xl lg:text-3xl leading-none mb-1 ${highlight ? "text-primary" : saber ? "text-blue-400 dark:text-blue-300" : "text-foreground"}`}>
+      <div className={`mb-1 font-stat text-2xl font-black leading-none lg:text-3xl ${highlight ? "text-primary" : saber ? "text-note" : "text-foreground"}`}>
         {value ?? "-"}
       </div>
-      <div className={`text-xs uppercase tracking-wider font-semibold ${saber ? "text-blue-400/70" : "text-muted-foreground"}`}>{label}</div>
-      {desc && <div className="text-xs text-muted-foreground mt-0.5 hidden lg:block">{desc}</div>}
+      <div className={`text-xs font-bold uppercase tracking-wide ${saber ? "text-note/80" : "text-muted-foreground"}`}>{label}</div>
+      {desc && <div className="mt-0.5 hidden text-xs text-muted-foreground lg:block">{desc}</div>}
     </div>
   );
 }
@@ -135,18 +135,18 @@ function CareerTable({ record }: { record: PlayerRecord }) {
   const cols = isHitter ? HITTER_CAREER_COLS : PITCHER_CAREER_COLS;
   const blankSet = isHitter ? HITTER_CAREER_BLANK : PITCHER_CAREER_BLANK;
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <h3 className="font-semibold text-sm">연도별 통산 기록</h3>
+    <section className="overflow-hidden rounded-[6px] border border-border bg-card shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+        <h3 className="font-serif text-lg font-black text-foreground">연도별 통산 기록</h3>
         <span className="text-[0.65rem] text-muted-foreground">데이터 출처: 네이버 스포츠 · 스태티즈</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs whitespace-nowrap">
+        <table className="w-full whitespace-nowrap text-xs">
           <thead>
-            <tr className="border-b border-border bg-secondary/30">
-              <th className="text-left py-2.5 px-3 font-bold text-muted-foreground sticky left-0 bg-secondary/30 z-10">시즌</th>
+            <tr className="border-b border-border-strong bg-muted text-[11px] uppercase tracking-wide">
+              <th className="sticky left-0 z-10 bg-muted px-3 py-2.5 text-left font-black text-muted-foreground">시즌</th>
               {cols.map((c) => (
-                <th key={c.key} className="text-center py-2.5 px-2.5 font-bold text-muted-foreground">{c.label}</th>
+                <th key={c.key} className="px-2.5 py-2.5 text-center font-black text-muted-foreground">{c.label}</th>
               ))}
             </tr>
           </thead>
@@ -154,11 +154,11 @@ function CareerTable({ record }: { record: PlayerRecord }) {
             {record.seasons.map((s) => (
               <tr
                 key={s.year + s.team}
-                className={`border-b border-border/40 hover:bg-accent/40 transition-colors ${s.isCareer ? "bg-secondary/40 font-semibold" : ""}`}
+                className={`border-b border-border transition-colors hover:bg-accent ${s.isCareer ? "bg-muted font-bold" : ""}`}
               >
-                <td className={`py-2 px-3 font-stat font-medium sticky left-0 z-10 ${s.isCareer ? "bg-secondary/60" : "bg-card"}`}>{s.year}</td>
+                <td className={`sticky left-0 z-10 px-3 py-2 font-stat font-bold ${s.isCareer ? "bg-muted" : "bg-card"}`}>{s.year}</td>
                 {cols.map((c) => (
-                  <td key={c.key} className="text-center py-2 px-2.5 font-stat tabular-nums">
+                  <td key={c.key} className="px-2.5 py-2 text-center font-stat tabular-nums">
                     {fmtCell(s, c.key as string, blankSet, c.dec)}
                   </td>
                 ))}
@@ -167,7 +167,7 @@ function CareerTable({ record }: { record: PlayerRecord }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -229,11 +229,11 @@ export default function PlayerDetail() {
 
   if (loading) {
     return (
-      <div className="p-4 lg:p-6 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-40 w-full rounded-xl" />
-        <div className="grid grid-cols-3 lg:grid-cols-5 gap-3">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+      <div className="mx-auto w-full max-w-[1440px] space-y-4 px-4 py-7 sm:px-6 lg:px-8">
+        <Skeleton className="h-8 w-48 bg-secondary" />
+        <Skeleton className="h-40 w-full rounded-[6px] bg-secondary" />
+        <div className="grid grid-cols-3 gap-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-[6px] bg-secondary" />)}
         </div>
       </div>
     );
@@ -241,11 +241,11 @@ export default function PlayerDetail() {
 
   if (!player) {
     return (
-      <div className="p-4 lg:p-6">
-        <Link href="/players" className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-7 sm:px-6 lg:px-8">
+        <Link href="/players" className="mb-6 flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft size={16} /> 선수 목록으로
         </Link>
-        <div className="text-center py-20 text-muted-foreground">
+        <div className="py-20 text-center text-muted-foreground">
           <User size={48} className="mx-auto mb-4 opacity-30" />
           <p>선수 정보를 찾을 수 없습니다: {playerName}</p>
         </div>
@@ -254,61 +254,58 @@ export default function PlayerDetail() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-5">
-      <Link href="/players" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm">
+    <div className="min-h-[calc(100vh-65px)] bg-background text-foreground">
+      <div className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-7 sm:px-6 lg:px-8">
+      <Link href="/players" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
         <ArrowLeft size={14} /> 선수 목록
       </Link>
 
       {/* 프로필 헤더 */}
-      <div
-        className="relative rounded-2xl overflow-hidden p-6 lg:p-8"
-        style={{
-          background: `linear-gradient(135deg, ${teamColor.primary}22 0%, transparent 60%)`,
-          border: `1px solid ${teamColor.primary}33`,
-        }}
+      <header
+        className="overflow-hidden rounded-[6px] border border-border bg-card p-6 shadow-[0_1px_2px_rgb(17_24_39/0.08)] lg:p-7"
+        style={{ borderTop: `3px solid ${teamColor.primary}` }}
       >
-        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `radial-gradient(circle at 80% 50%, ${teamColor.primary} 0%, transparent 60%)` }} />
-        <div className="relative flex items-center gap-5">
+        <div className="flex items-center gap-5">
           <div
-            className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl overflow-hidden shrink-0"
-            style={{ backgroundColor: teamColor.primary + "33", border: `2px solid ${teamColor.primary}55` }}
+            className="h-16 w-16 shrink-0 overflow-hidden rounded-[4px] border border-border bg-muted lg:h-20 lg:w-20"
+            style={{ borderBottom: `3px solid ${teamColor.primary}` }}
           >
             {(player as any).photoUrl ? (
               <img
                 src={(player as any).photoUrl}
                 alt={player.playerName}
-                className="w-full h-full object-cover object-top"
+                className="h-full w-full object-cover object-top grayscale-[15%]"
                 onError={(e) => {
                   const el = e.target as HTMLImageElement;
                   el.style.display = "none";
                   el.parentElement!.classList.add("flex", "items-center", "justify-center");
                   const span = document.createElement("span");
-                  span.className = "text-3xl font-display";
+                  span.className = "text-3xl font-serif font-black";
                   span.style.color = teamColor.primary;
                   span.textContent = player.playerName.charAt(0);
                   el.parentElement!.appendChild(span);
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl font-display" style={{ color: teamColor.primary }}>
+              <div className="flex h-full w-full items-center justify-center font-serif text-3xl font-black" style={{ color: teamColor.primary }}>
                 {player.playerName.charAt(0)}
               </div>
             )}
           </div>
           <div>
-            <h1 className="font-display text-3xl lg:text-4xl tracking-wider leading-none mb-1">{player.playerName}</h1>
-            <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="mb-1 font-serif text-3xl font-black leading-none text-foreground lg:text-4xl">{player.playerName}</h1>
+            <div className="flex flex-wrap items-center gap-2">
               <TeamBadge teamName={player.teamName} showFull />
               <span className="text-xs text-muted-foreground">{isHitter ? "타자" : "투수"} · 2026시즌</span>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* 핵심 스탯 카드 */}
       <div>
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">핵심 스탯</div>
-        <div className="grid grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">핵심 스탯</div>
+        <div className="grid grid-cols-3 gap-3 lg:grid-cols-5">
           {isHitter && hitter ? (
             <>
               <StatCard label="AVG" value={hitter.avg} highlight />
@@ -331,8 +328,8 @@ export default function PlayerDetail() {
 
       {/* 세이버메트릭스 스탯 카드 */}
       <div>
-        <div className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">세이버메트릭스</div>
-        <div className="grid grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="mb-2 text-xs font-black uppercase tracking-wide text-note">세이버메트릭스</div>
+        <div className="grid grid-cols-3 gap-3 lg:grid-cols-5">
           {isHitter && hitter ? (
             <>
               <StatCard label="OBP" value={hitter.obp ?? "-"} saber desc="출루율" />
@@ -354,10 +351,10 @@ export default function PlayerDetail() {
       </div>
 
       {/* 레이더 차트 + 상세 기록 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* 레이더 차트 */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="font-semibold text-sm mb-4">능력치 레이더</h3>
+        <div className="rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+          <h3 className="mb-4 font-serif text-lg font-black text-foreground">능력치 레이더</h3>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
@@ -375,7 +372,7 @@ export default function PlayerDetail() {
                   contentStyle={{
                     background: "var(--popover)",
                     border: "1px solid var(--border)",
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     fontSize: "12px",
                     color: "var(--popover-foreground)",
                   }}
@@ -387,9 +384,9 @@ export default function PlayerDetail() {
         </div>
 
         {/* 상세 기록 테이블 */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="font-semibold text-sm mb-4">2026 시즌 상세 기록</h3>
-          <div className="space-y-0 overflow-y-auto max-h-64">
+        <div className="rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+          <h3 className="mb-4 font-serif text-lg font-black text-foreground">2026 시즌 상세 기록</h3>
+          <div className="max-h-64 space-y-0 overflow-y-auto">
             {isHitter && hitter ? (
               [
                 ["경기", hitter.games], ["타석", hitter.pa], ["타수", hitter.ab],
@@ -431,10 +428,11 @@ export default function PlayerDetail() {
 
       {/* 연도별 통산 기록 */}
       {recordLoading ? (
-        <Skeleton className="h-48 w-full rounded-xl" />
+        <Skeleton className="h-48 w-full rounded-[6px] bg-secondary" />
       ) : record && record.seasons.length > 0 ? (
         <CareerTable record={record} />
       ) : null}
+      </div>
     </div>
   );
 }

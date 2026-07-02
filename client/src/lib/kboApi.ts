@@ -203,6 +203,11 @@ export interface PlayerRecord {
   updatedAt: string;
 }
 
+/** 검색 결과 선수 (타자/투수 공통 + 타입 구분) */
+export type SearchPlayer = (Hitter | Pitcher) & {
+  type?: "hitter" | "pitcher";
+};
+
 // ─── API 함수 ────────────────────────────────────────────────
 
 export const kboApi = {
@@ -247,7 +252,7 @@ export const kboApi = {
 
   /** 선수 검색 */
   searchPlayers: (q: string, season = "2026") =>
-    fetchApi<{ data: (Hitter | Pitcher)[]; query: string }>("search", { q, season }),
+    fetchApi<{ data: SearchPlayer[]; query: string }>("search", { q, season }),
 
   /** 선수 연도별 통산 기록 (네이버/스태티즈 출처, WAR/wRC+/wOBA 포함) */
   getPlayerRecord: (playerId: string) =>

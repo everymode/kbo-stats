@@ -20,12 +20,12 @@ const SEASON_AWARDS: Record<string, { mvp?: string; rookie?: string; champion?: 
 function AwardCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value?: string; color: string }) {
   return (
     <div className="stat-card flex items-center gap-4">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: color + "22" }}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px]" style={{ backgroundColor: color + "22" }}>
         <Icon size={18} style={{ color }} />
       </div>
       <div>
-        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">{label}</div>
-        <div className="font-semibold text-sm">{value || "미정"}</div>
+        <div className="mb-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="text-sm font-bold text-foreground">{value || "미정"}</div>
       </div>
     </div>
   );
@@ -62,18 +62,20 @@ export default function Archive() {
   const awards = SEASON_AWARDS[season];
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="min-h-[calc(100vh-65px)] bg-background text-foreground">
+      <div className="mx-auto w-full max-w-[1440px] space-y-6 px-4 py-7 sm:px-6 lg:px-8">
       {/* 헤더 */}
-      <div className="flex items-start justify-between">
+      <header className="flex items-start justify-between border-b border-border-strong pb-5">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Calendar size={20} className="text-primary" />
-            <h1 className="font-display text-3xl lg:text-4xl tracking-wider leading-none">시즌 아카이브</h1>
-          </div>
-          <p className="text-muted-foreground text-sm">역대 KBO 시즌 기록 조회</p>
+          <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            <Calendar size={14} />
+            Season archive
+          </p>
+          <h1 className="font-serif text-4xl font-black leading-tight text-foreground">시즌 아카이브</h1>
+          <p className="mt-2 text-sm text-muted-foreground">역대 KBO 시즌 기록 조회</p>
         </div>
         <Select value={season} onValueChange={setSeason}>
-          <SelectTrigger className="w-32 bg-secondary/50 border-border/50">
+          <SelectTrigger className="h-9 w-32 rounded-[4px] border-input bg-popover text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -82,30 +84,30 @@ export default function Archive() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </header>
 
       {/* 수상자 */}
       {awards && (
         <div>
-          <h2 className="font-semibold text-sm mb-3 text-muted-foreground uppercase tracking-wider">{season}시즌 주요 수상</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <AwardCard icon={Trophy} label="MVP" value={awards.mvp} color="#FFD700" />
-            <AwardCard icon={TrendingUp} label="신인왕" value={awards.rookie} color="#00C8E0" />
-            <AwardCard icon={Trophy} label="한국시리즈 우승" value={awards.champion} color="#FF6600" />
+          <h2 className="mb-3 text-xs font-black uppercase tracking-wide text-muted-foreground">{season}시즌 주요 수상</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <AwardCard icon={Trophy} label="MVP" value={awards.mvp} color="var(--warning)" />
+            <AwardCard icon={TrendingUp} label="신인왕" value={awards.rookie} color="var(--primary)" />
+            <AwardCard icon={Trophy} label="한국시리즈 우승" value={awards.champion} color="var(--note)" />
           </div>
         </div>
       )}
 
       {/* 팀 순위 */}
       <div>
-        <h2 className="font-semibold text-sm mb-3 text-muted-foreground uppercase tracking-wider">{season}시즌 팀 순위</h2>
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <h2 className="mb-3 text-xs font-black uppercase tracking-wide text-muted-foreground">{season}시즌 팀 순위</h2>
+        <div className="overflow-hidden rounded-[6px] border border-border bg-card shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
           {loading ? (
-            <div className="p-4 space-y-2">
-              {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-[4px] bg-secondary" />)}
             </div>
           ) : (
-            <table className="w-full data-table">
+            <table className="data-table w-full">
               <thead>
                 <tr>
                   <th className="text-left">순위</th>
@@ -131,16 +133,16 @@ export default function Archive() {
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: team.colors.primary }} />
-                        <span className="font-medium">{team.teamFull}</span>
+                        <div className="h-6 w-[3px] rounded-full" style={{ backgroundColor: team.colors.primary }} />
+                        <span className="font-bold text-foreground">{team.teamFull}</span>
                       </div>
                     </td>
                     <td className="text-right font-stat">{team.games}</td>
                     <td className="text-right font-stat">{team.wins}</td>
                     <td className="text-right font-stat">{team.losses}</td>
                     <td className="text-right font-stat">{team.draws}</td>
-                    <td className="text-right font-stat font-semibold text-primary">{team.winRate}</td>
-                    <td className="text-right font-stat hidden lg:table-cell">{team.gameBehind || "-"}</td>
+                    <td className="text-right font-stat font-black text-primary">{team.winRate}</td>
+                    <td className="hidden text-right font-stat lg:table-cell">{team.gameBehind || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -150,48 +152,49 @@ export default function Archive() {
       </div>
 
       {/* 타자/투수 하이라이트 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-[6px] border border-border bg-card p-4 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+          <div className="mb-3 flex items-center gap-2">
             <TrendingUp size={15} className="text-primary" />
-            <h3 className="font-semibold text-sm">{season}시즌 타율 TOP 5</h3>
+            <h3 className="font-serif text-lg font-black text-foreground">{season}시즌 타율 TOP 5</h3>
           </div>
           {loading ? (
-            <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+            <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full bg-secondary" />)}</div>
           ) : (
-            <div className="space-y-2">
+            <div className="divide-y divide-border">
               {topHitters.map((h, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="w-5 text-xs text-muted-foreground font-stat">{i + 1}</span>
-                  <span className="flex-1 text-sm font-medium">{h.playerName}</span>
+                <div key={i} className="flex items-center gap-3 py-2">
+                  <span className="w-5 font-stat text-xs font-black text-foreground">{i + 1}</span>
+                  <span className="flex-1 text-sm font-bold text-foreground">{h.playerName}</span>
                   <TeamBadge teamName={h.teamName} />
-                  <span className="font-stat text-sm font-semibold text-primary">{h.avg}</span>
+                  <span className="font-stat text-sm font-black text-primary">{h.avg}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="rounded-[6px] border border-border bg-card p-4 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+          <div className="mb-3 flex items-center gap-2">
             <Zap size={15} className="text-primary" />
-            <h3 className="font-semibold text-sm">{season}시즌 ERA TOP 5</h3>
+            <h3 className="font-serif text-lg font-black text-foreground">{season}시즌 ERA TOP 5</h3>
           </div>
           {loading ? (
-            <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+            <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full bg-secondary" />)}</div>
           ) : (
-            <div className="space-y-2">
+            <div className="divide-y divide-border">
               {topPitchers.map((p, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="w-5 text-xs text-muted-foreground font-stat">{i + 1}</span>
-                  <span className="flex-1 text-sm font-medium">{p.playerName}</span>
+                <div key={i} className="flex items-center gap-3 py-2">
+                  <span className="w-5 font-stat text-xs font-black text-foreground">{i + 1}</span>
+                  <span className="flex-1 text-sm font-bold text-foreground">{p.playerName}</span>
                   <TeamBadge teamName={p.teamName} />
-                  <span className="font-stat text-sm font-semibold text-primary">{p.era}</span>
+                  <span className="font-stat text-sm font-black text-primary">{p.era}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

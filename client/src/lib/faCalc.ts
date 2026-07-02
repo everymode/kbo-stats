@@ -111,18 +111,18 @@ function getCompensation(player: FAPlayer, grade: FAGrade): CompensationInfo {
 
 export const GRADE_STYLES: Record<FAGrade, { bg: string; text: string; label: string }> = {
   A: {
-    bg: "bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800",
-    text: "text-red-700 dark:text-red-400",
+    bg: "bg-destructive/10 border-destructive/40",
+    text: "text-destructive",
     label: "A등급",
   },
   B: {
-    bg: "bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800",
-    text: "text-amber-700 dark:text-amber-400",
+    bg: "bg-warning/10 border-warning/40",
+    text: "text-warning",
     label: "B등급",
   },
   C: {
-    bg: "bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800",
-    text: "text-emerald-700 dark:text-emerald-400",
+    bg: "bg-success/10 border-success/40",
+    text: "text-success",
     label: "C등급",
   },
 };
