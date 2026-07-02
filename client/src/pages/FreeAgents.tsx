@@ -44,7 +44,7 @@ function GradeBadge({ grade, size = "sm" }: { grade: FAGrade; size?: "sm" | "md"
   const style = GRADE_STYLES[grade];
   const sizeClass = size === "md" ? "px-3 py-1.5 text-sm" : "px-2 py-0.5 text-xs";
   return (
-    <span className={`inline-flex items-center font-bold rounded-md border ${sizeClass} ${style.bg} ${style.text}`}>
+    <span className={`inline-flex items-center rounded-[3px] border font-stat font-black ${sizeClass} ${style.bg} ${style.text}`}>
       {style.label}
     </span>
   );
@@ -60,14 +60,14 @@ function SummaryCard({ label, value, sub, icon: Icon, color }: {
   color: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
+    <div className="flex items-center gap-3 rounded-[6px] border border-border bg-card p-4 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-[4px] ${color}`}>
         <Icon size={18} />
       </div>
       <div>
-        <div className="font-display text-xl font-bold">{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-        {sub && <div className="text-xs text-muted-foreground/70 mt-0.5">{sub}</div>}
+        <div className="font-stat text-xl font-black text-foreground">{value}</div>
+        <div className="text-xs font-bold text-muted-foreground">{label}</div>
+        {sub && <div className="mt-0.5 text-xs text-muted-foreground/70">{sub}</div>}
       </div>
     </div>
   );
@@ -93,44 +93,43 @@ function FARow({ item, index, onClick }: {
 
   return (
     <div
-      className="flex items-center gap-2 py-3 px-4 rounded-lg hover:bg-accent/60 transition-all cursor-pointer animate-fade-in-up border border-transparent hover:border-border"
-      style={{ animationDelay: `${index * 30}ms` }}
+      className="flex cursor-pointer items-center gap-2 border-b border-border px-4 py-3 transition-colors hover:bg-accent"
       onClick={onClick}
     >
       {/* 순위 */}
-      <div className="w-7 text-center font-stat text-xs text-muted-foreground shrink-0">
+      <div className="w-7 shrink-0 text-center font-stat text-xs font-bold text-muted-foreground">
         {index + 1}
       </div>
 
       {/* 선수명 */}
-      <div className="w-28 shrink-0 flex items-center gap-2">
+      <div className="flex w-28 shrink-0 items-center gap-2">
         <TeamBadge teamName={player.team} size="sm" />
-        <span className="font-semibold text-sm truncate">{player.name}</span>
+        <span className="truncate text-sm font-bold text-foreground">{player.name}</span>
       </div>
 
       {/* 포지션 */}
-      <div className="w-16 shrink-0 text-xs text-muted-foreground hidden sm:block">
+      <div className="hidden w-16 shrink-0 text-xs text-muted-foreground sm:block">
         {player.position}
       </div>
 
       {/* 나이 */}
-      <div className="w-10 shrink-0 text-xs text-center text-muted-foreground hidden md:block">
+      <div className="hidden w-10 shrink-0 text-center font-stat text-xs text-muted-foreground md:block">
         {player.age}세
       </div>
 
       {/* 등급 */}
-      <div className="w-16 shrink-0 flex justify-center">
+      <div className="flex w-16 shrink-0 justify-center">
         <GradeBadge grade={grade} />
       </div>
 
       {/* 핵심스탯 */}
-      <div className="flex-1 text-xs font-stat text-muted-foreground truncate hidden lg:block">
+      <div className="hidden flex-1 truncate font-stat text-xs text-muted-foreground lg:block">
         {keyStat}
       </div>
 
       {/* 예상계약 */}
       <div className="w-24 shrink-0 text-right">
-        <div className="font-stat text-sm font-bold text-primary">
+        <div className="font-stat text-sm font-black text-primary">
           {formatAmount(contract.totalAmount)}
         </div>
         <div className="text-xs text-muted-foreground">
@@ -187,9 +186,9 @@ function FADetailDialog({ item, open, onClose }: {
           {/* FA 등급 */}
           <section>
             <SectionTitle icon={Shield} title="FA 등급 분석" />
-            <div className={`rounded-xl border p-4 ${gradeStyle.bg}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`font-bold text-lg ${gradeStyle.text}`}>
+            <div className={`rounded-[6px] border p-4 ${gradeStyle.bg}`}>
+              <div className="mb-2 flex items-center justify-between">
+                <span className={`text-lg font-black ${gradeStyle.text}`}>
                   {gradeStyle.label}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -208,9 +207,9 @@ function FADetailDialog({ item, open, onClose }: {
           {/* 예상 계약 */}
           <section>
             <SectionTitle icon={Calculator} title="예상 계약 규모" />
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-baseline gap-2 mb-4">
-                <span className="font-display text-3xl text-primary font-bold">
+            <div className="rounded-[6px] border border-border bg-card p-4">
+              <div className="mb-4 flex items-baseline gap-2">
+                <span className="font-stat text-3xl font-black text-primary">
                   {formatAmount(contract.totalAmount)}
                 </span>
                 <span className="text-muted-foreground text-sm">
@@ -228,13 +227,13 @@ function FADetailDialog({ item, open, onClose }: {
                   <span className="font-bold text-primary">{contract.totalAmount}억</span>
                   <span>{contract.rangeMax}억</span>
                 </div>
-                <div className="h-2.5 bg-secondary rounded-full relative overflow-hidden">
+                <div className="relative h-2 overflow-hidden rounded-[2px] bg-secondary">
                   <div
-                    className="absolute h-full bg-primary/20 rounded-full"
+                    className="absolute h-full rounded-[2px] bg-primary/20"
                     style={{ left: '0%', width: '100%' }}
                   />
                   <div
-                    className="absolute h-full w-2 bg-primary rounded-full -translate-x-1/2"
+                    className="absolute h-full w-2 -translate-x-1/2 rounded-[2px] bg-primary"
                     style={{
                       left: `${Math.max(5, Math.min(95, ((contract.totalAmount - contract.rangeMin) / (contract.rangeMax - contract.rangeMin)) * 100))}%`,
                     }}
@@ -243,7 +242,7 @@ function FADetailDialog({ item, open, onClose }: {
               </div>
 
               {/* 판단 근거 */}
-              <div className="p-3 bg-secondary/50 rounded-lg">
+              <div className="rounded-[4px] bg-muted p-3">
                 <div className="text-xs font-semibold text-muted-foreground mb-1">판단 근거</div>
                 <p className="text-sm text-foreground leading-relaxed">{contract.rationale}</p>
               </div>
@@ -261,12 +260,12 @@ function FADetailDialog({ item, open, onClose }: {
           {/* 보상 규정 */}
           <section>
             <SectionTitle icon={TrendingUp} title="이적 보상 규정" />
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`font-bold text-sm ${
+            <div className="rounded-[6px] border border-border bg-card p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className={`text-sm font-bold ${
                   compensation.type === "보상금만"
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-amber-600 dark:text-amber-400"
+                    ? "text-success"
+                    : "text-warning"
                 }`}>
                   {compensation.type}
                 </span>
@@ -276,12 +275,12 @@ function FADetailDialog({ item, open, onClose }: {
               </div>
               {compensation.type === "인적보상 대상" && (
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/50">
+                  <div className="flex items-start gap-2 rounded-[4px] bg-muted p-2.5">
                     <span className="text-xs font-bold text-muted-foreground shrink-0 mt-0.5">옵션 1</span>
                     <span>{compensation.option1}</span>
                   </div>
                   {compensation.option2 && (
-                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/50">
+                    <div className="flex items-start gap-2 rounded-[4px] bg-muted p-2.5">
                       <span className="text-xs font-bold text-muted-foreground shrink-0 mt-0.5">옵션 2</span>
                       <span>{compensation.option2}</span>
                     </div>
@@ -290,7 +289,7 @@ function FADetailDialog({ item, open, onClose }: {
               )}
               {compensation.type === "보상금만" && (
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/50">
+                  <div className="flex items-start gap-2 rounded-[4px] bg-muted p-2.5">
                     <span>{compensation.option1}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -334,7 +333,7 @@ function FADetailDialog({ item, open, onClose }: {
           </section>
 
           {/* 면책 */}
-          <p className="text-xs text-muted-foreground/60 text-center pt-2 border-t border-border">
+          <p className="border-t border-border pt-2 text-center text-xs text-muted-foreground/60">
             ※ 예상 계약 규모와 등급은 자체 알고리즘 기반 추정치이며, 실제 FA 시장 결과와 다를 수 있습니다.
           </p>
         </div>
@@ -347,7 +346,7 @@ function FADetailDialog({ item, open, onClose }: {
 
 function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
   return (
-    <h3 className="flex items-center gap-2 text-sm font-bold mb-2">
+    <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-foreground">
       <Icon size={14} className="text-primary" />
       {title}
     </h3>
@@ -356,11 +355,11 @@ function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: s
 
 function InfoChip({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2">
+    <div className="flex items-center gap-2 rounded-[4px] bg-muted px-3 py-2">
       <Icon size={13} className="text-muted-foreground shrink-0" />
       <div>
         <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="text-sm font-semibold">{value}</div>
+        <div className="text-sm font-bold text-foreground">{value}</div>
       </div>
     </div>
   );
@@ -368,8 +367,8 @@ function InfoChip({ icon: Icon, label, value }: { icon: React.ElementType; label
 
 function StatChip({ label, value, primary = false }: { label: string; value: string | number; primary?: boolean }) {
   return (
-    <div className="bg-secondary/50 rounded-lg px-3 py-2 text-center">
-      <div className={`font-stat text-lg font-bold ${primary ? "text-primary" : "text-foreground"}`}>
+    <div className="rounded-[4px] bg-muted px-3 py-2 text-center">
+      <div className={`font-stat text-lg font-black ${primary ? "text-primary" : "text-foreground"}`}>
         {value}
       </div>
       <div className="text-xs text-muted-foreground">{label}</div>
@@ -379,10 +378,10 @@ function StatChip({ label, value, primary = false }: { label: string; value: str
 
 function BreakdownRow({ label, value, desc }: { label: string; value: string; desc?: string }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+    <div className="flex items-center justify-between border-b border-border py-1.5 last:border-0">
       <div>
         <span className="text-foreground">{label}</span>
-        {desc && <span className="text-xs text-muted-foreground ml-2">({desc})</span>}
+        {desc && <span className="ml-2 text-xs text-muted-foreground">({desc})</span>}
       </div>
       <span className="font-stat font-bold text-foreground">{value}</span>
     </div>
@@ -458,60 +457,64 @@ export default function FreeAgents() {
   };
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="min-h-[calc(100vh-65px)] bg-background text-foreground">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-7 sm:px-6 lg:px-8">
       {/* 헤더 */}
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <FileSignature size={18} className="text-primary" />
-        </div>
-        <h1 className="font-display text-3xl lg:text-4xl leading-tight">2027 FA</h1>
-      </div>
-      <p className="text-muted-foreground text-sm mb-6">
-        2026 시즌 종료 후 FA 자격 취득 예상 선수 — 등급 · 계약 규모 · 보상 규정 분석
-      </p>
+      <header className="mb-6 border-b border-border-strong pb-5">
+        <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <FileSignature size={14} />
+          2027 Free agents
+        </p>
+        <h1 className="font-serif text-4xl font-black leading-tight text-foreground">
+          2027 FA 전망
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          2026 시즌 종료 후 FA 자격 취득 예상 선수 · 등급 · 계약 규모 · 보상 규정 분석
+        </p>
+      </header>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard
           icon={User}
           label="FA 예상 인원"
           value={`${summary.total}명`}
           sub={`타자 ${allPlayers.filter(p => p.player.type === "hitter").length}명 · 투수 ${allPlayers.filter(p => p.player.type === "pitcher").length}명`}
-          color="bg-primary/10 text-primary"
+          color="bg-accent text-primary"
         />
         <SummaryCard
           icon={Award}
           label="등급 분포"
           value={`A ${summary.grades.A} · B ${summary.grades.B} · C ${summary.grades.C}`}
-          color="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          color="bg-warning/10 text-warning"
         />
         <SummaryCard
           icon={TrendingUp}
           label="예상 시장 총 규모"
           value={`약 ${summary.totalMarket}억`}
-          color="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          color="bg-success/10 text-success"
         />
         <SummaryCard
           icon={Shield}
           label="인적보상 대상"
           value={`${summary.grades.A + summary.grades.B}명`}
           sub={`A·B등급 FA 이적 시`}
-          color="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+          color="bg-accent text-primary"
         />
       </div>
 
       {/* 필터 */}
-      <div className="bg-card border border-border rounded-2xl p-4 mb-5 flex flex-wrap gap-3 items-center shadow-sm">
+      <section className="mb-5 flex flex-wrap items-center gap-3 rounded-[6px] border border-border bg-muted px-4 py-3 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "all" | "hitter" | "pitcher")}>
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="all">전체</TabsTrigger>
-            <TabsTrigger value="hitter">타자</TabsTrigger>
-            <TabsTrigger value="pitcher">투수</TabsTrigger>
+          <TabsList className="rounded-[4px] bg-secondary">
+            <TabsTrigger value="all" className="rounded-[3px]">전체</TabsTrigger>
+            <TabsTrigger value="hitter" className="rounded-[3px]">타자</TabsTrigger>
+            <TabsTrigger value="pitcher" className="rounded-[3px]">투수</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <Select value={team} onValueChange={setTeam}>
-          <SelectTrigger className="w-28 h-9 bg-secondary border-border text-sm">
+          <SelectTrigger className="h-9 w-28 rounded-[4px] border-input bg-popover text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -521,35 +524,35 @@ export default function FreeAgents() {
           </SelectContent>
         </Select>
 
-        <div className="text-xs text-muted-foreground font-medium ml-auto">
+        <div className="ml-auto font-stat text-xs font-bold text-muted-foreground">
           {filtered.length}명
         </div>
-      </div>
+      </section>
 
       {/* 테이블 */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+      <section className="overflow-hidden rounded-[6px] border border-border bg-card shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
         {/* 헤더 */}
-        <div className="flex items-center gap-2 py-3 px-4 border-b-2 border-border bg-secondary/30">
-          <div className="w-7 text-xs font-bold text-muted-foreground">#</div>
-          <div className="w-28 text-xs font-bold text-muted-foreground">선수</div>
-          <div className="w-16 text-xs font-bold text-muted-foreground hidden sm:block">포지션</div>
+        <div className="flex items-center gap-2 border-b border-border-strong bg-muted px-4 py-2.5">
+          <div className="w-7 text-xs font-black uppercase text-muted-foreground">#</div>
+          <div className="w-28 text-xs font-black uppercase text-muted-foreground">선수</div>
+          <div className="hidden w-16 text-xs font-black uppercase text-muted-foreground sm:block">포지션</div>
           <button
-            className="w-10 text-xs font-bold text-muted-foreground hidden md:flex items-center gap-0.5 cursor-pointer hover:text-primary"
+            className="hidden w-10 cursor-pointer items-center gap-0.5 text-xs font-black uppercase text-muted-foreground hover:text-primary md:flex"
             onClick={() => handleSort("age")}
           >
             나이 <SortIcon colKey="age" />
           </button>
           <button
-            className="w-16 text-xs font-bold text-muted-foreground flex items-center justify-center gap-0.5 cursor-pointer hover:text-primary"
+            className="flex w-16 cursor-pointer items-center justify-center gap-0.5 text-xs font-black uppercase text-muted-foreground hover:text-primary"
             onClick={() => handleSort("score")}
           >
             등급 <SortIcon colKey="score" />
           </button>
-          <div className="flex-1 text-xs font-bold text-muted-foreground hidden lg:block">
+          <div className="hidden flex-1 text-xs font-black uppercase text-muted-foreground lg:block">
             핵심 스탯
           </div>
           <button
-            className="w-24 text-xs font-bold text-muted-foreground text-right flex items-center justify-end gap-0.5 cursor-pointer hover:text-primary"
+            className="flex w-24 cursor-pointer items-center justify-end gap-0.5 text-right text-xs font-black uppercase text-muted-foreground hover:text-primary"
             onClick={() => handleSort("contract")}
           >
             예상 계약 <SortIcon colKey="contract" />
@@ -557,7 +560,7 @@ export default function FreeAgents() {
         </div>
 
         {/* 행 */}
-        <div className="divide-y divide-border/50">
+        <div>
           {sorted.map((item, idx) => (
             <FARow
               key={item.player.name}
@@ -569,15 +572,15 @@ export default function FreeAgents() {
         </div>
 
         {sorted.length === 0 && (
-          <div className="text-center text-muted-foreground py-12 text-sm">
+          <div className="py-12 text-center text-sm text-muted-foreground">
             해당 조건의 FA 예상 선수가 없습니다.
           </div>
         )}
-      </div>
+      </section>
 
       {/* 안내 */}
       <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground/60">
-        <Info size={13} className="shrink-0 mt-0.5" />
+        <Info size={13} className="mt-0.5 shrink-0" />
         <p>
           등급과 계약 규모는 최근 3시즌 평균 성적, 나이, 포지션 등을 기반으로 자체 알고리즘이 산출한 예측치입니다.
           실제 FA 결과와 다를 수 있으며, 선수를 클릭하면 상세 분석을 확인할 수 있습니다.
@@ -590,6 +593,7 @@ export default function FreeAgents() {
         open={!!selectedPlayer}
         onClose={() => setSelectedPlayer(null)}
       />
+      </div>
     </div>
   );
 }

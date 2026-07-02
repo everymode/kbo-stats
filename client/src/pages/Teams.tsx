@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { kboApi, TeamRank, TEAM_FULL_NAMES } from "@/lib/kboApi";
+import { kboApi, TeamRank } from "@/lib/kboApi";
 import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
+import { Trophy, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 function WinRateBar({ winRate, color }: { winRate: string; color: string }) {
   const pct = parseFloat(winRate) * 100 || 0;
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 bg-secondary rounded-full h-2 overflow-hidden">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-[2px] bg-secondary">
         <div
-          className="h-full rounded-full transition-all duration-700"
+          className="h-full rounded-[2px] transition-all duration-700"
           style={{ width: `${pct}%`, backgroundColor: color }}
         />
       </div>
-      <span className="font-stat text-xs font-semibold text-foreground w-10 text-right">{winRate}</span>
+      <span className="w-10 text-right font-stat text-xs font-black text-foreground">{winRate}</span>
     </div>
   );
 }
@@ -26,10 +26,12 @@ function StreakBadge({ streak }: { streak: string }) {
   const isDraw = streak.includes("무");
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
-        isWin ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-        isDraw ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
-        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+      className={`inline-flex items-center gap-1 rounded-[3px] border px-2 py-0.5 font-stat text-xs font-black ${
+        isWin
+          ? "border-success/40 bg-success/10 text-success"
+          : isDraw
+            ? "border-draw/40 bg-draw/10 text-draw"
+            : "border-destructive/40 bg-destructive/10 text-destructive"
       }`}
     >
       {isWin ? <TrendingUp size={10} /> : isDraw ? <Minus size={10} /> : <TrendingDown size={10} />}
@@ -43,46 +45,43 @@ function TeamCard({ team, index }: { team: TeamRank; index: number }) {
 
   return (
     <Link href={`/teams/${encodeURIComponent(team.teamShort)}`}>
-      <div
-        className="card-glow border border-border p-6 cursor-pointer animate-fade-in-up"
-        style={{ animationDelay: `${index * 60}ms` }}
+      <article
+        className="cursor-pointer overflow-hidden rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)] transition-colors hover:border-border-strong animate-fade-in-up"
+        style={{
+          animationDelay: `${index * 60}ms`,
+          borderTop: `3px solid ${team.colors.primary}`,
+        }}
       >
         {/* 상단: 순위 + 팀명 */}
-        <div className="flex items-start justify-between mb-5">
+        <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <TeamBadge teamName={team.teamName} size="lg" />
             <div>
-              <div className="font-bold text-sm">{team.teamFull}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{team.games}경기</div>
+              <div className="text-sm font-bold text-foreground">{team.teamFull}</div>
+              <div className="mt-0.5 font-stat text-xs text-muted-foreground">{team.games}경기</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <StreakBadge streak={team.streak} />
-            <span
-              className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                team.rank <= 3
-                  ? "bg-primary/10 text-primary"
-                  : "bg-secondary text-muted-foreground"
-              }`}
-            >
+            <span className="flex h-7 w-7 items-center justify-center rounded-[3px] bg-foreground font-stat text-sm font-black text-background">
               {team.rank}
             </span>
           </div>
         </div>
 
         {/* 성적 */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="text-center bg-secondary/50 rounded-xl py-3">
-            <div className="font-display text-2xl text-foreground leading-none">{team.wins}</div>
-            <div className="text-xs text-muted-foreground mt-1 font-medium">승</div>
+        <div className="mb-4 grid grid-cols-3 divide-x divide-border border-y border-border">
+          <div className="py-2.5 text-center">
+            <div className="font-stat text-2xl font-black leading-none text-foreground">{team.wins}</div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">승</div>
           </div>
-          <div className="text-center bg-secondary/50 rounded-xl py-3">
-            <div className="font-display text-2xl text-foreground leading-none">{team.losses}</div>
-            <div className="text-xs text-muted-foreground mt-1 font-medium">패</div>
+          <div className="py-2.5 text-center">
+            <div className="font-stat text-2xl font-black leading-none text-foreground">{team.losses}</div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">패</div>
           </div>
-          <div className="text-center bg-secondary/50 rounded-xl py-3">
-            <div className="font-display text-2xl text-foreground leading-none">{team.draws}</div>
-            <div className="text-xs text-muted-foreground mt-1 font-medium">무</div>
+          <div className="py-2.5 text-center">
+            <div className="font-stat text-2xl font-black leading-none text-foreground">{team.draws}</div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">무</div>
           </div>
         </div>
 
@@ -90,22 +89,22 @@ function TeamCard({ team, index }: { team: TeamRank; index: number }) {
         <WinRateBar winRate={team.winRate} color={team.colors.primary} />
 
         {/* 하단 정보 */}
-        <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-          <div className="text-xs text-muted-foreground">
+        <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+          <div>
             <span>최근 10경기: </span>
-            <span className="text-foreground font-semibold">{team.recentTen || "-"}</span>
+            <span className="font-stat font-bold text-foreground">{team.recentTen || "-"}</span>
           </div>
-          <div className="text-xs text-muted-foreground">
-            GB: <span className="text-foreground font-semibold">{team.gameBehind || "-"}</span>
+          <div>
+            GB: <span className="font-stat font-bold text-foreground">{team.gameBehind || "-"}</span>
           </div>
         </div>
 
         {/* 홈/원정 */}
-        <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
-          <span>🏠 홈 {team.home || "-"}</span>
-          <span>✈️ 원정 {team.away || "-"}</span>
+        <div className="mt-2 flex gap-4 font-stat text-xs text-muted-foreground">
+          <span>홈 {team.home || "-"}</span>
+          <span>원정 {team.away || "-"}</span>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }
@@ -122,28 +121,35 @@ export default function Teams() {
   }, []);
 
   return (
-    <div className="p-4 lg:p-8">
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Trophy size={18} className="text-primary" />
-        </div>
-        <h1 className="font-display text-3xl lg:text-4xl leading-tight">팀 순위</h1>
-      </div>
-      <p className="text-muted-foreground text-sm mb-8">2026 KBO 리그 — 10개 구단 실시간 순위</p>
+    <div className="min-h-[calc(100vh-65px)] bg-background text-foreground">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-7 sm:px-6 lg:px-8">
+        <header className="mb-6 border-b border-border-strong pb-5">
+          <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            <Trophy size={14} />
+            Team standings
+          </p>
+          <h1 className="font-serif text-4xl font-black leading-tight text-foreground">
+            팀 순위
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            2026 KBO 리그 · 10개 구단 순위 · 데이터 출처: KBO 공식 사이트
+          </p>
+        </header>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <Skeleton key={i} className="h-52 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {teams.map((team, i) => (
-            <TeamCard key={team.teamName} team={team} index={i} />
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Skeleton key={i} className="h-52 w-full rounded-[6px] bg-secondary" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {teams.map((team, i) => (
+              <TeamCard key={team.teamName} team={team} index={i} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

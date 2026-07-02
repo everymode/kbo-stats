@@ -52,28 +52,30 @@ export default function Glossary() {
   );
 
   return (
-    <div className="p-4 lg:p-8">
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <BookOpen size={18} className="text-primary" />
-        </div>
-        <h1 className="font-display text-3xl lg:text-4xl leading-tight">기록 용어 사전</h1>
-      </div>
-      <p className="text-muted-foreground text-sm mb-8">야구 기록 용어와 세이버메트릭스 지표 설명</p>
+    <div className="min-h-[calc(100vh-65px)] bg-background text-foreground">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-7 sm:px-6 lg:px-8">
+      <header className="mb-6 border-b border-border-strong pb-5">
+        <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <BookOpen size={14} />
+          Glossary
+        </p>
+        <h1 className="font-serif text-4xl font-black leading-tight text-foreground">기록 용어 사전</h1>
+        <p className="mt-2 text-sm text-muted-foreground">야구 기록 용어와 세이버메트릭스 지표 설명</p>
+      </header>
 
       {/* 필터 */}
-      <div className="flex flex-wrap gap-3 items-center mb-5">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "basic" | "sabermetrics")}>
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="basic">기본 용어</TabsTrigger>
-            <TabsTrigger value="sabermetrics">세이버메트릭스</TabsTrigger>
+          <TabsList className="rounded-[4px] bg-secondary">
+            <TabsTrigger value="basic" className="rounded-[3px]">기본 용어</TabsTrigger>
+            <TabsTrigger value="sabermetrics" className="rounded-[3px]">세이버메트릭스</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="relative flex-1 max-w-xs">
+        <div className="relative max-w-xs flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="pl-9 h-9 bg-secondary border-border text-sm"
+            className="h-9 rounded-[4px] border-input bg-popover pl-9 text-sm"
             placeholder="용어 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -82,41 +84,39 @@ export default function Glossary() {
       </div>
 
       {/* 용어 카드 그리드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filtered.map((term, i) => (
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((term) => (
           <div
             key={term.term}
-            className="bg-card border border-border rounded-2xl p-5 animate-fade-in-up hover:border-primary/30 hover:shadow-md transition-all"
-            style={{ animationDelay: `${i * 30}ms` }}
+            className="rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)] transition-colors hover:border-border-strong"
           >
-            <div className="flex items-start justify-between mb-2">
-              <div
-                className="font-display text-2xl text-primary leading-none"
-              >
+            <div className="mb-2 flex items-start justify-between">
+              <div className="font-stat text-2xl font-black leading-none text-primary">
                 {term.term}
               </div>
               {term.formula !== "-" && (
-                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-stat">
+                <span className="rounded-[3px] bg-accent px-2 py-0.5 font-stat text-xs font-bold text-primary">
                   공식
                 </span>
               )}
             </div>
-            <div className="text-xs font-semibold text-muted-foreground mb-2">{term.full}</div>
+            <div className="mb-2 text-xs font-bold text-muted-foreground">{term.full}</div>
             {term.formula !== "-" && (
-              <div className="font-stat text-xs bg-secondary rounded-lg px-2.5 py-2 mb-2.5 text-foreground/80">
+              <div className="mb-2.5 rounded-[4px] bg-muted px-2.5 py-2 font-stat text-xs text-foreground/80">
                 {term.formula}
               </div>
             )}
-            <p className="text-xs text-muted-foreground leading-relaxed">{term.desc}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{term.desc}</p>
           </div>
         ))}
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="py-12 text-center text-sm text-muted-foreground">
           검색 결과가 없습니다.
         </div>
       )}
+      </div>
     </div>
   );
 }

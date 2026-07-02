@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useNavigate } from "@/hooks/useNavigate";
-import { kboApi } from "@/lib/kboApi";
+import { kboApi, SearchPlayer } from "@/lib/kboApi";
 
 const NAV_ITEMS = [
   { path: "/", label: "홈", icon: Home, description: "오늘의 KBO" },
@@ -52,10 +52,9 @@ export default function Layout({ children }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchPlayer[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
-  const isLedgerHome = location === "/";
 
   useEffect(() => {
     if (searchQuery.length < 1) {
@@ -77,16 +76,14 @@ export default function Layout({ children }: LayoutProps) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleSearchSelect = (player: any) => {
+  const handleSearchSelect = (player: SearchPlayer) => {
     setSearchQuery("");
     setSearchOpen(false);
     navigate(`/players/${encodeURIComponent(player.playerName)}`);
   };
 
   return (
-    <div
-      className={`flex min-h-screen ${isLedgerHome ? "bg-[#f7f3ea] text-[#111827]" : "bg-background"}`}
-    >
+    <div className="flex min-h-screen bg-background text-foreground">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 lg:hidden"
@@ -95,35 +92,24 @@ export default function Layout({ children }: LayoutProps) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-full w-56 flex-col transition-transform duration-300 ease-out lg:static lg:flex lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-50 flex h-full w-56 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300 ease-out lg:static lg:flex lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } ${isLedgerHome ? "border-r border-[#d8d0c2] bg-[#f3eee4]" : ""}`}
-        style={isLedgerHome ? undefined : { background: "#1a2332" }}
+        }`}
       >
-        <div
-          className={`relative flex flex-col items-center border-b py-6 ${isLedgerHome ? "border-[#d8d0c2]" : "border-white/10"}`}
-        >
+        <div className="relative flex flex-col items-center border-b border-sidebar-border py-6">
           <img
             src="/sidebar/sidebar.png"
             alt="KBO Records"
             className="mb-2 h-20 w-20 object-contain drop-shadow-lg"
           />
-          <div
-            className={`text-base font-bold tracking-wide ${isLedgerHome ? "text-[#111827]" : "text-white"}`}
-          >
+          <div className="text-base font-bold tracking-wide text-sidebar-foreground">
             KBO Records
           </div>
-          <div
-            className={`mt-0.5 text-[0.65rem] ${isLedgerHome ? "text-[#6b665c]" : "text-white/50"}`}
-          >
+          <div className="mt-0.5 text-[0.65rem] text-muted-foreground">
             한국 프로야구 기록실
           </div>
           <button
-            className={`absolute right-3 top-4 transition-colors lg:hidden ${
-              isLedgerHome
-                ? "text-[#6b665c] hover:text-[#111827]"
-                : "text-white/60 hover:text-white"
-            }`}
+            className="absolute right-3 top-4 text-muted-foreground transition-colors hover:text-foreground lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={18} />
@@ -140,13 +126,9 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.path}
                 href={item.path}
                 className={`flex items-center gap-3 rounded-[6px] px-4 py-3 text-sm transition-all ${
-                  isLedgerHome
-                    ? isActive
-                      ? "border-l-2 border-[#183b59] bg-[#fffdf7] font-semibold text-[#111827] shadow-[0_1px_2px_rgb(17_24_39/0.08)]"
-                      : "text-[#6b665c] hover:bg-[#e7e0d2] hover:text-[#111827]"
-                    : isActive
-                      ? "border-l-3 border-white bg-white/15 font-semibold text-white"
-                      : "text-white/60 hover:bg-white/8 hover:text-white/90"
+                  isActive
+                    ? "border-l-2 border-primary bg-popover font-semibold text-foreground shadow-[0_1px_2px_rgb(17_24_39/0.08)]"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
                 onClick={() => setSidebarOpen(false)}
               >
@@ -162,31 +144,17 @@ export default function Layout({ children }: LayoutProps) {
           })}
         </nav>
 
-        <div
-          className={`border-t px-4 py-4 ${isLedgerHome ? "border-[#d8d0c2]" : "border-white/10"}`}
-        >
-          <div
-            className={`text-center text-[0.6rem] ${isLedgerHome ? "text-[#6b665c]" : "text-white/40"}`}
-          >
+        <div className="border-t border-sidebar-border px-4 py-4">
+          <div className="text-center text-[0.6rem] text-muted-foreground">
             데이터 출처: KBO 공식 사이트
           </div>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header
-          className={`sticky top-0 z-30 flex items-center gap-3 border-b px-5 py-3 ${
-            isLedgerHome
-              ? "border-[#d8d0c2] bg-[#f7f3ea]/95 text-[#111827] backdrop-blur"
-              : "border-border bg-background"
-          }`}
-        >
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/95 px-5 py-3 backdrop-blur">
           <button
-            className={`transition-colors lg:hidden ${
-              isLedgerHome
-                ? "text-[#6b665c] hover:text-[#111827]"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            className="text-muted-foreground transition-colors hover:text-foreground lg:hidden"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu size={20} />
@@ -195,16 +163,10 @@ export default function Layout({ children }: LayoutProps) {
           <div className="relative flex-1 max-w-lg">
             <Search
               size={15}
-              className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${
-                isLedgerHome ? "text-[#6b665c]" : "text-muted-foreground"
-              }`}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <Input
-              className={`h-10 rounded-[4px] pl-9 text-sm ${
-                isLedgerHome
-                  ? "border-[#d8d0c2] bg-[#fffdf7] text-[#111827] placeholder:text-[#8a8176] focus-visible:ring-[#183b59]/30 dark:bg-[#fffdf7] dark:text-[#111827] dark:placeholder:text-[#8a8176]"
-                  : "border-border bg-card"
-              }`}
+              className="h-10 rounded-[4px] border-input bg-popover pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-ring/30"
               placeholder="선수명, 팀명으로 검색..."
               value={searchQuery}
               onChange={event => setSearchQuery(event.target.value)}
@@ -213,19 +175,11 @@ export default function Layout({ children }: LayoutProps) {
             />
 
             {searchOpen && searchResults.length > 0 && (
-              <div
-                className={`absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[6px] border shadow-2xl ${
-                  isLedgerHome
-                    ? "border-[#d8d0c2] bg-[#fffdf7]"
-                    : "border-border bg-popover"
-                }`}
-              >
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[6px] border border-border bg-popover shadow-[0_8px_20px_rgb(17_24_39/0.10)]">
                 {searchResults.map((player, index) => (
                   <button
                     key={`${player.playerName}-${index}`}
-                    className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-                      isLedgerHome ? "hover:bg-[#ede7db]" : "hover:bg-accent"
-                    }`}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent"
                     onMouseDown={() => handleSearchSelect(player)}
                   >
                     <div
@@ -255,21 +209,15 @@ export default function Layout({ children }: LayoutProps) {
                       )}
                     </div>
                     <div>
-                      <span
-                        className={`text-sm font-medium ${isLedgerHome ? "text-[#111827]" : ""}`}
-                      >
+                      <span className="text-sm font-medium text-foreground">
                         {player.playerName}
                       </span>
-                      <span
-                        className={`ml-2 text-xs ${isLedgerHome ? "text-[#6b665c]" : "text-muted-foreground"}`}
-                      >
+                      <span className="ml-2 text-xs text-muted-foreground">
                         {player.teamName}
                       </span>
                     </div>
-                    <span
-                      className={`ml-auto text-xs ${isLedgerHome ? "text-[#6b665c]" : "text-muted-foreground"}`}
-                    >
-                      {(player as any).type === "pitcher" ? "투수" : "타자"}
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {player.type === "pitcher" ? "투수" : "타자"}
                     </span>
                   </button>
                 ))}
@@ -277,9 +225,7 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
 
-          <div
-            className={`hidden items-center gap-1.5 text-xs sm:flex ${isLedgerHome ? "text-[#6b665c]" : "text-muted-foreground"}`}
-          >
+          <div className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
             <Clock size={13} />
             <span>
               {new Date().toLocaleTimeString("ko-KR", {
@@ -292,11 +238,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
 
           <button
-            className={`ml-auto hidden items-center gap-2 rounded-[4px] border px-4 py-2 text-sm font-medium transition-all sm:flex ${
-              isLedgerHome
-                ? "border-[#d8d0c2] bg-[#fffdf7] text-[#111827] hover:border-[#9c9385]"
-                : "border-border bg-card text-foreground hover:bg-accent"
-            }`}
+            className="ml-auto hidden items-center gap-2 rounded-[4px] border border-border bg-popover px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-border-strong sm:flex"
             onClick={toggleTheme}
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
