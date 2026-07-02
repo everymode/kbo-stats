@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, BookOpen, Flag, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpen, Flag, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Hitter, kboApi, Pitcher, TeamRank } from "@/lib/kboApi";
 
@@ -576,8 +576,6 @@ export default function Home() {
     };
   }, []);
 
-  const firstTeam = teamRank[0];
-
   return (
     <div className="min-h-[calc(100vh-65px)] bg-[#f7f3ea] text-[#111827]">
       <div className="mx-auto w-full max-w-[1440px] px-4 py-7 sm:px-6 lg:px-8">
@@ -696,37 +694,6 @@ export default function Home() {
                   ))}
                 </div>
               )}
-            </section>
-
-            <section className="rounded-[6px] border border-[#d8d0c2] bg-[#fbf8f0] p-4 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
-              <div className="mb-3 flex items-center gap-2">
-                <ShieldCheck size={17} className="text-[#183b59]" />
-                <h2 className="font-serif text-lg font-black text-[#111827]">
-                  기록실 메모
-                </h2>
-              </div>
-              <div className="space-y-3 text-sm leading-6 text-[#4b453c]">
-                <p>
-                  이 홈 화면은 경기 일정보다 선수 기록과 팀 기록을 빠르게 찾는
-                  데 초점을 둡니다.
-                </p>
-                {firstTeam && (
-                  <p>
-                    현재 선두는{" "}
-                    <strong className="text-[#111827]">
-                      {firstTeam.teamFull}
-                    </strong>
-                    이며 승률은{" "}
-                    <strong className="font-stat text-[#111827]">
-                      {firstTeam.winRate}
-                    </strong>
-                    입니다.
-                  </p>
-                )}
-                <p className="border-t border-dashed border-[#c8bead] pt-3 text-xs text-[#6b665c]">
-                  데이터 출처: KBO 공식 사이트
-                </p>
-              </div>
             </section>
           </aside>
         </div>
