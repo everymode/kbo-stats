@@ -155,7 +155,9 @@ function LeaderCard({
             {index + 1}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-muted-foreground">{leader.label}</p>
+            <p className="text-xs font-bold text-muted-foreground">
+              {leader.label}
+            </p>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="font-stat text-[34px] font-black leading-none text-foreground">
                 {leader.value}
@@ -364,10 +366,7 @@ function AvgLeadersTable({
     return (
       <div className="space-y-2 p-4">
         {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton
-            key={index}
-            className="h-9 w-full rounded-[4px] bg-muted"
-          />
+          <Skeleton key={index} className="h-9 w-full rounded-[4px] bg-muted" />
         ))}
       </div>
     );
@@ -489,23 +488,17 @@ export default function Home() {
       setError(null);
 
       try {
-        const [rankRes, avgRes, hrRes, eraRes, soRes] = await Promise.all([
-          kboApi.getTeamRank(),
-          kboApi.getLeaderboard("avg", "2026", undefined, 5),
-          kboApi.getLeaderboard("hr", "2026", undefined, 1),
-          kboApi.getLeaderboard("era", "2026", undefined, 1),
-          kboApi.getLeaderboard("so", "2026", undefined, 1),
-        ]);
+        const summary = await kboApi.getHomeSummary("2026");
 
         if (cancelled) return;
 
-        const avgData = avgRes.data as Hitter[];
-        const topAvg = avgData[0];
-        const topHR = (hrRes.data as Hitter[])[0];
-        const topERA = (eraRes.data as Pitcher[])[0];
-        const topSO = (soRes.data as Pitcher[])[0];
+        const avgData = summary.avgLeaders;
+        const topAvg = summary.leaders.avg;
+        const topHR = summary.leaders.hr;
+        const topERA = summary.leaders.era;
+        const topSO = summary.leaders.so;
 
-        setTeamRank(rankRes.data);
+        setTeamRank(summary.teamRank);
         setAvgLeaders(avgData);
         setLeaderSummaries(
           [
@@ -552,7 +545,7 @@ export default function Home() {
           ].filter(Boolean) as LeaderSummary[]
         );
         setLastUpdated(
-          new Date(rankRes.updatedAt).toLocaleTimeString("ko-KR", {
+          new Date(summary.updatedAt).toLocaleTimeString("ko-KR", {
             hour: "2-digit",
             minute: "2-digit",
           })
