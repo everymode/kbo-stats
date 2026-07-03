@@ -5,8 +5,13 @@
 
 const API_BASE = import.meta.env.VITE_KBO_API_URL || "/api/kbo";
 
-async function fetchApi<T>(action: string, params?: Record<string, string>): Promise<T> {
-  const base = API_BASE.startsWith('http') ? API_BASE : window.location.origin + API_BASE;
+async function fetchApi<T>(
+  action: string,
+  params?: Record<string, string>
+): Promise<T> {
+  const base = API_BASE.startsWith("http")
+    ? API_BASE
+    : window.location.origin + API_BASE;
   const url = new URL(base);
   url.searchParams.set("action", action);
   if (params) {
@@ -78,10 +83,10 @@ export interface Hitter {
   cs?: number;
   gdp?: number;
   // 세이버메트릭스
-  bbPct?: string;   // BB%
-  kPct?: string;    // K%
-  iso?: string;     // 순수장타율
-  babip?: string;   // 인플레이 타구 타율
+  bbPct?: string; // BB%
+  kPct?: string; // K%
+  iso?: string; // 순수장타율
+  babip?: string; // 인플레이 타구 타율
 }
 
 export interface Pitcher {
@@ -110,10 +115,10 @@ export interface Pitcher {
   er: number;
   whip: string;
   // 세이버메트릭스
-  k9?: string;    // 9이닝당 탈삼진
-  bb9?: string;   // 9이닝당 볼넷
-  hr9?: string;   // 9이닝당 피홈런
-  fip?: string;   // 수비무관 평균자책점
+  k9?: string; // 9이닝당 탈삼진
+  bb9?: string; // 9이닝당 볼넷
+  hr9?: string; // 9이닝당 피홈런
+  fip?: string; // 수비무관 평균자책점
 }
 
 export interface Schedule {
@@ -135,6 +140,19 @@ export interface ApiResponse<T> {
 export interface LeaderboardResponse<T> {
   data: T[];
   category: string;
+  season: string;
+  updatedAt: string;
+}
+
+export interface HomeSummaryResponse {
+  teamRank: TeamRank[];
+  avgLeaders: Hitter[];
+  leaders: {
+    avg: Hitter | null;
+    hr: Hitter | null;
+    era: Pitcher | null;
+    so: Pitcher | null;
+  };
   season: string;
   updatedAt: string;
 }
@@ -211,6 +229,9 @@ export type SearchPlayer = (Hitter | Pitcher) & {
 // ─── API 함수 ────────────────────────────────────────────────
 
 export const kboApi = {
+  getHomeSummary: (season = "2026") =>
+    fetchApi<HomeSummaryResponse>("home-summary", { season }),
+
   /** 팀 순위 */
   getTeamRank: () =>
     fetchApi<{ data: TeamRank[]; updatedAt: string }>("team-rank"),
@@ -221,11 +242,17 @@ export const kboApi = {
 
   /** 타자 기록 (OPS/OBP/SLG 포함) */
   getHittersOps: (season = "2026", page = 1) =>
-    fetchApi<ApiResponse<Hitter>>("hitters-ops", { season, page: String(page) }),
+    fetchApi<ApiResponse<Hitter>>("hitters-ops", {
+      season,
+      page: String(page),
+    }),
 
   /** 타자 통합 기록 (HR, RBI, H, OPS, OBP, SLG, BB%, K%, ISO, BABIP 모두 포함) */
   getHittersCombined: (season = "2026", page = 1) =>
-    fetchApi<ApiResponse<Hitter>>("hitters-combined", { season, page: String(page) }),
+    fetchApi<ApiResponse<Hitter>>("hitters-combined", {
+      season,
+      page: String(page),
+    }),
 
   /** 타자 전체 (5페이지, ~150명) */
   getHittersAll: (season = "2026") =>
@@ -241,13 +268,28 @@ export const kboApi = {
 
   /** 경기 일정/결과 */
   getSchedule: (gameDate?: string) =>
-    fetchApi<ApiResponse<Schedule>>("schedule", gameDate ? { game_date: gameDate } : {}),
+    fetchApi<ApiResponse<Schedule>>(
+      "schedule",
+      gameDate ? { game_date: gameDate } : {}
+    ),
 
   /** 통합 리더보드 */
-  getLeaderboard: (category: string, season = "2026", team?: string, limit = 30) => {
-    const params: Record<string, string> = { category, season, limit: String(limit) };
+  getLeaderboard: (
+    category: string,
+    season = "2026",
+    team?: string,
+    limit = 30
+  ) => {
+    const params: Record<string, string> = {
+      category,
+      season,
+      limit: String(limit),
+    };
     if (team) params.team = team;
-    return fetchApi<LeaderboardResponse<Hitter | Pitcher>>("leaderboard", params);
+    return fetchApi<LeaderboardResponse<Hitter | Pitcher>>(
+      "leaderboard",
+      params
+    );
   },
 
   /** 선수 검색 */
@@ -265,26 +307,26 @@ export const kboApi = {
 // ─── 팀 컬러 유틸리티 ────────────────────────────────────────
 
 export const TEAM_COLORS: Record<string, TeamColors> = {
-  KIA:  { primary: "#EA0029", secondary: "#000000" },
+  KIA: { primary: "#EA0029", secondary: "#000000" },
   삼성: { primary: "#074CA1", secondary: "#FFFFFF" },
-  LG:   { primary: "#C30037", secondary: "#000000" },
+  LG: { primary: "#C30037", secondary: "#000000" },
   두산: { primary: "#131230", secondary: "#ED1C24" },
-  KT:   { primary: "#333333", secondary: "#ED1C24" },
-  SSG:  { primary: "#CE0E2D", secondary: "#FFC600" },
-  NC:   { primary: "#315288", secondary: "#C5985E" },
+  KT: { primary: "#333333", secondary: "#ED1C24" },
+  SSG: { primary: "#CE0E2D", secondary: "#FFC600" },
+  NC: { primary: "#315288", secondary: "#C5985E" },
   롯데: { primary: "#041E42", secondary: "#D00F31" },
   한화: { primary: "#FF6600", secondary: "#000000" },
   키움: { primary: "#820024", secondary: "#000000" },
 };
 
 export const TEAM_FULL_NAMES: Record<string, string> = {
-  KIA:  "KIA 타이거즈",
+  KIA: "KIA 타이거즈",
   삼성: "삼성 라이온즈",
-  LG:   "LG 트윈스",
+  LG: "LG 트윈스",
   두산: "두산 베어스",
-  KT:   "KT 위즈",
-  SSG:  "SSG 랜더스",
-  NC:   "NC 다이노스",
+  KT: "KT 위즈",
+  SSG: "SSG 랜더스",
+  NC: "NC 다이노스",
   롯데: "롯데 자이언츠",
   한화: "한화 이글스",
   키움: "키움 히어로즈",
