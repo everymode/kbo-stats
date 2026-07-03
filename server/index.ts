@@ -7,6 +7,7 @@ import {
   getHitters,
   getHittersOps,
   getHittersCombined,
+  getHitterSituation,
   getPitchers,
   getLeaderboard,
   searchPlayers,
@@ -73,6 +74,19 @@ async function startServer() {
       const season = String(req.query.season ?? "2026");
       const page = parseInt(String(req.query.page ?? "1"));
       const data = await getHittersOps(season, page);
+      res.json(data);
+    } catch (e: any) {
+      res.status(503).json({ error: e.message });
+    }
+  });
+
+  // 타자 상황별 기록 (볼카운트, 투수유형)
+  app.get("/api/kbo/hitter-situation", async (req, res) => {
+    try {
+      const playerId = String(req.query.playerId ?? "");
+      if (!playerId)
+        return res.status(400).json({ error: "playerId required" });
+      const data = await getHitterSituation(playerId);
       res.json(data);
     } catch (e: any) {
       res.status(503).json({ error: e.message });

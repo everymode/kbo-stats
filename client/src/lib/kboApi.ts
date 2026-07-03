@@ -157,6 +157,29 @@ export interface HomeSummaryResponse {
   updatedAt: string;
 }
 
+export interface SituationSplit {
+  label: string;
+  avg: string;
+  ab: number;
+  hits: number;
+  doubles: number;
+  triples: number;
+  hr: number;
+  rbi: number;
+  bb: number;
+  hbp: number;
+  so: number;
+  gdp: number;
+}
+
+export interface HitterSituation {
+  playerId: string;
+  seasonAvg: string;
+  counts: SituationSplit[];
+  vsTypes: SituationSplit[];
+  updatedAt: string;
+}
+
 // ─── 연도별 통산 기록 (네이버/스태티즈 출처) ─────────────────
 export interface HitterSeason {
   year: string;
@@ -299,6 +322,10 @@ export const kboApi = {
   /** 선수 연도별 통산 기록 (네이버/스태티즈 출처, WAR/wRC+/wOBA 포함) */
   getPlayerRecord: (playerId: string) =>
     fetchApi<PlayerRecord>("player-record", { playerId }),
+
+  /** 타자 상황별 기록 (볼카운트, 투수유형) */
+  getHitterSituation: (playerId: string) =>
+    fetchApi<HitterSituation>("hitter-situation", { playerId }),
 
   /** 헬스체크 */
   health: () => fetchApi<{ status: string; timestamp: string }>("health"),
