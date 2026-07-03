@@ -339,6 +339,79 @@ interface PitcherSeason {
   ops: number;
 }
 
+interface SituationSplit {
+  label: string;
+  avg: string;
+  ab: number;
+  hits: number;
+  doubles: number;
+  triples: number;
+  hr: number;
+  rbi: number;
+  bb: number;
+  hbp: number;
+  so: number;
+  gdp: number;
+}
+
+function nI(v: string | undefined) {
+  return parseInt(String(v ?? "").replace(/,/g, ""), 10) || 0;
+}
+
+function rate(v: number) {
+  if (!Number.isFinite(v)) return ".000";
+  return v.toFixed(3).replace(/^(-?)0\./, "$1.");
+}
+
+function normalizeAvg(v: string | undefined) {
+  const n = parseFloat(String(v ?? "").trim());
+  return Number.isFinite(n) ? rate(n) : ".000";
+}
+
+function pTableRows($: cheerio.CheerioAPI, tableIndex: number) {
+  const rows: string[][] = [];
+  $("table")
+    .eq(tableIndex)
+    .find("tr")
+    .each((_i, row) => {
+      const cols: string[] = [];
+      $(row)
+        .find("td")
+        .each((_, td) => {
+          cols.push($(td).text().trim());
+        });
+      if (cols.length > 0) rows.push(cols);
+    });
+  return rows;
+}
+
+function pSituationRows($: cheerio.CheerioAPI, tableIndex: number) {
+  return pTableRows($, tableIndex)
+    .filter(c => c.length >= 11 && c[0])
+    .map(
+      (c): SituationSplit => ({
+        label: c[0] ?? "",
+        avg: normalizeAvg(c[1]),
+        ab: nI(c[2]),
+        hits: nI(c[3]),
+        doubles: nI(c[4]),
+        triples: nI(c[5]),
+        hr: nI(c[6]),
+        rbi: nI(c[7]),
+        bb: nI(c[8]),
+        hbp: nI(c[9]),
+        so: nI(c[10]),
+        gdp: nI(c[11]),
+      })
+    );
+}
+
+function seasonAvgFromSplits(splits: SituationSplit[]) {
+  const ab = splits.reduce((sum, row) => sum + row.ab, 0);
+  const hits = splits.reduce((sum, row) => sum + row.hits, 0);
+  return ab > 0 ? rate(hits / ab) : ".000";
+}
+
 function mapHitterSeason(s: any): HitterSeason {
   return {
     year: String(s.gyear ?? ""),
@@ -435,6 +508,31 @@ async function getPlayerRecord(playerId: string) {
   };
   sc(ck, result);
   return result;
+}
+
+async function getHitterSituation(playerId: string) {
+  const ck = `hs_${playerId}`;
+  const c = gc(ck);
+  if (c) return c;
+  return dedup(ck, async () => {
+    const $ = await fH(
+      `${BASE_URL}/Record/Player/HitterDetail/Situation.aspx`,
+      {
+        playerId,
+      }
+    );
+    const counts = pSituationRows($, 1);
+    const vsTypes = pSituationRows($, 4);
+    const result = {
+      playerId,
+      seasonAvg: seasonAvgFromSplits(vsTypes.length ? vsTypes : counts),
+      counts,
+      vsTypes,
+      updatedAt: new Date().toISOString(),
+    };
+    sc(ck, result);
+    return result;
+  });
 }
 
 // ─── 최근 경기 결과 (일정 ajax 기반, 순서 보존) ─────────────
@@ -1196,6 +1294,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const pid = String(req.query.playerId ?? "");
         if (!pid) return res.status(400).json({ error: "playerId required" });
         return res.json(await getPlayerRecord(pid));
+      }
+      case "hitter-situation": {
+        const pid = String(req.query.playerId ?? "");
+        if (!pid) return res.status(400).json({ error: "playerId required" });
+        return res.json(await getHitterSituation(pid));
       }
       default:
         return res.status(404).json({ error: "Unknown action", action });
