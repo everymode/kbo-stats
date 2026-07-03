@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useParams } from "wouter";
 import {
   kboApi,
@@ -23,6 +23,12 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+
+type SeasonDetailRow = {
+  label: string;
+  value?: string | number | null;
+  section?: boolean;
+};
 
 // ─── 스탯 카드 ────────────────────────────────────────────
 function StatCard({
@@ -293,6 +299,186 @@ function SituationPanel({
         </div>
       )}
     </div>
+  );
+}
+
+function PlayerDetailAnalysisGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+      {children}
+    </div>
+  );
+}
+
+function PitcherRadarFallback({
+  playerName,
+  teamColor,
+  radarData,
+}: {
+  playerName: string;
+  teamColor: { primary: string };
+  radarData: ReturnType<typeof getPitcherRadarData>;
+}) {
+  return (
+    <section className="flex h-full flex-col rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+      <h3 className="mb-4 font-serif text-lg font-black text-foreground">
+        능력치 레이더
+      </h3>
+      <div className="h-56 flex-1 min-h-56">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={radarData}>
+            <PolarGrid stroke="var(--border)" />
+            <PolarAngleAxis
+              dataKey="subject"
+              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+            />
+            <Radar
+              name={playerName}
+              dataKey="value"
+              stroke={teamColor.primary}
+              fill={teamColor.primary}
+              fillOpacity={0.25}
+              strokeWidth={2}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "var(--popover)",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                fontSize: "12px",
+                color: "var(--popover-foreground)",
+              }}
+              formatter={(val: number) => [`${val.toFixed(0)}점`, ""]}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
+function PlayerInsightPanel({
+  isHitter,
+  hitter,
+  pitcher,
+  situation,
+  situationLoading,
+  playerName,
+  teamColor,
+  radarData,
+}: {
+  isHitter: boolean;
+  hitter: Hitter | null;
+  pitcher: Pitcher | null;
+  situation: HitterSituation | null;
+  situationLoading: boolean;
+  playerName: string;
+  teamColor: { primary: string };
+  radarData: ReturnType<typeof getPitcherRadarData>;
+}) {
+  if (isHitter && hitter) {
+    return (
+      <SituationPanel
+        situation={situation}
+        loading={situationLoading}
+        seasonAvg={hitter.avg}
+      />
+    );
+  }
+
+  if (pitcher) {
+    return (
+      <PitcherRadarFallback
+        playerName={playerName}
+        teamColor={teamColor}
+        radarData={radarData}
+      />
+    );
+  }
+
+  return null;
+}
+
+function getHitterSeasonDetailRows(hitter: Hitter): SeasonDetailRow[] {
+  return [
+    { label: "경기", value: hitter.games },
+    { label: "타석", value: hitter.pa },
+    { label: "타수", value: hitter.ab },
+    { label: "득점", value: hitter.runs },
+    { label: "안타", value: hitter.hits },
+    { label: "2루타", value: hitter.doubles },
+    { label: "3루타", value: hitter.triples },
+    { label: "홈런", value: hitter.hr },
+    { label: "타점", value: hitter.rbi },
+    { label: "볼넷", value: hitter.bb },
+    { label: "삼진", value: hitter.so },
+    { label: "희타", value: hitter.sac },
+    { label: "희비", value: hitter.sf },
+    { label: "병살", value: hitter.gdp },
+    { label: "세이버메트릭스", section: true },
+    { label: "출루율 OBP", value: hitter.obp },
+    { label: "장타율 SLG", value: hitter.slg },
+    { label: "OPS", value: hitter.ops },
+    { label: "ISO", value: hitter.iso },
+    { label: "BABIP", value: hitter.babip },
+    { label: "BB%", value: hitter.bbPct ? `${hitter.bbPct}%` : "-" },
+    { label: "K%", value: hitter.kPct ? `${hitter.kPct}%` : "-" },
+  ];
+}
+
+function getPitcherSeasonDetailRows(pitcher: Pitcher): SeasonDetailRow[] {
+  return [
+    { label: "경기", value: pitcher.games },
+    { label: "승", value: pitcher.wins },
+    { label: "패", value: pitcher.losses },
+    { label: "세이브", value: pitcher.saves },
+    { label: "홀드", value: pitcher.holds },
+    { label: "이닝", value: pitcher.ip },
+    { label: "피안타", value: pitcher.hits },
+    { label: "피홈런", value: pitcher.hr },
+    { label: "볼넷", value: pitcher.bb },
+    { label: "사구", value: pitcher.hbp },
+    { label: "탈삼진", value: pitcher.so },
+    { label: "실점", value: pitcher.runs },
+    { label: "자책점", value: pitcher.er },
+    { label: "세이버메트릭스", section: true },
+    { label: "WHIP", value: pitcher.whip },
+    { label: "FIP", value: pitcher.fip },
+    { label: "K/9", value: pitcher.k9 },
+    { label: "BB/9", value: pitcher.bb9 },
+    { label: "HR/9", value: pitcher.hr9 },
+  ];
+}
+
+function SeasonDetailPanel({ rows }: { rows: SeasonDetailRow[] }) {
+  return (
+    <section className="flex h-full flex-col rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
+      <h3 className="mb-4 font-serif text-lg font-black text-foreground">
+        2026 시즌 상세 기록
+      </h3>
+      <div className="flex-1 space-y-0">
+        {rows.map(row =>
+          row.section ? (
+            <div
+              key={row.label}
+              className="border-b border-border/30 pt-3 pb-1.5 text-xs font-black text-muted-foreground"
+            >
+              {row.label}
+            </div>
+          ) : (
+            <div
+              key={row.label}
+              className="flex items-center justify-between border-b border-border/30 py-1.5 last:border-0"
+            >
+              <span className="text-xs text-muted-foreground">{row.label}</span>
+              <span className="font-stat text-xs font-medium">
+                {row.value ?? "-"}
+              </span>
+            </div>
+          )
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -571,6 +757,13 @@ export default function PlayerDetail() {
     );
   }
 
+  const seasonDetailRows =
+    isHitter && hitter
+      ? getHitterSeasonDetailRows(hitter)
+      : pitcher
+        ? getPitcherSeasonDetailRows(pitcher)
+        : [];
+
   return (
     <div className="min-h-[calc(100vh-65px)] bg-background text-foreground">
       <div className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-7 sm:px-6 lg:px-8">
@@ -737,133 +930,19 @@ export default function PlayerDetail() {
         </div>
 
         {/* 상황별 기록 또는 레이더 차트 + 상세 기록 */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {isHitter && hitter ? (
-            <SituationPanel
-              situation={situation}
-              loading={situationLoading}
-              seasonAvg={hitter.avg}
-            />
-          ) : (
-            <div className="rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
-              <h3 className="mb-4 font-serif text-lg font-black text-foreground">
-                능력치 레이더
-              </h3>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData}>
-                    <PolarGrid stroke="var(--border)" />
-                    <PolarAngleAxis
-                      dataKey="subject"
-                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                    />
-                    <Radar
-                      name={player.playerName}
-                      dataKey="value"
-                      stroke={teamColor.primary}
-                      fill={teamColor.primary}
-                      fillOpacity={0.25}
-                      strokeWidth={2}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--popover)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "6px",
-                        fontSize: "12px",
-                        color: "var(--popover-foreground)",
-                      }}
-                      formatter={(val: number) => [`${val.toFixed(0)}점`, ""]}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {/* 상세 기록 테이블 */}
-          <div className="rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
-            <h3 className="mb-4 font-serif text-lg font-black text-foreground">
-              2026 시즌 상세 기록
-            </h3>
-            <div className="max-h-64 space-y-0 overflow-y-auto">
-              {isHitter && hitter
-                ? [
-                    ["경기", hitter.games],
-                    ["타석", hitter.pa],
-                    ["타수", hitter.ab],
-                    ["득점", hitter.runs],
-                    ["안타", hitter.hits],
-                    ["2루타", hitter.doubles],
-                    ["3루타", hitter.triples],
-                    ["홈런", hitter.hr],
-                    ["타점", hitter.rbi],
-                    ["볼넷", hitter.bb],
-                    ["삼진", hitter.so],
-                    ["희타", hitter.sac],
-                    ["희비", hitter.sf],
-                    ["병살", hitter.gdp],
-                    ["─ 세이버 ─", ""],
-                    ["출루율 OBP", hitter.obp],
-                    ["장타율 SLG", hitter.slg],
-                    ["OPS", hitter.ops],
-                    ["ISO", hitter.iso],
-                    ["BABIP", hitter.babip],
-                    ["BB%", hitter.bbPct ? `${hitter.bbPct}%` : "-"],
-                    ["K%", hitter.kPct ? `${hitter.kPct}%` : "-"],
-                  ].map(([label, value]) => (
-                    <div
-                      key={String(label)}
-                      className={`flex items-center justify-between py-1.5 border-b border-border/30 last:border-0 ${String(label).includes("─") ? "opacity-50" : ""}`}
-                    >
-                      <span
-                        className={`text-xs ${String(label).includes("─") ? "text-muted-foreground" : "text-muted-foreground"}`}
-                      >
-                        {label}
-                      </span>
-                      <span className="font-stat text-xs font-medium">
-                        {value ?? "-"}
-                      </span>
-                    </div>
-                  ))
-                : pitcher
-                  ? [
-                      ["경기", pitcher.games],
-                      ["승", pitcher.wins],
-                      ["패", pitcher.losses],
-                      ["세이브", pitcher.saves],
-                      ["홀드", pitcher.holds],
-                      ["이닝", pitcher.ip],
-                      ["피안타", pitcher.hits],
-                      ["피홈런", pitcher.hr],
-                      ["볼넷", pitcher.bb],
-                      ["사구", pitcher.hbp],
-                      ["탈삼진", pitcher.so],
-                      ["실점", pitcher.runs],
-                      ["자책점", pitcher.er],
-                      ["─ 세이버 ─", ""],
-                      ["WHIP", pitcher.whip],
-                      ["FIP", pitcher.fip],
-                      ["K/9", pitcher.k9],
-                      ["BB/9", pitcher.bb9],
-                      ["HR/9", pitcher.hr9],
-                    ].map(([label, value]) => (
-                      <div
-                        key={String(label)}
-                        className={`flex items-center justify-between py-1.5 border-b border-border/30 last:border-0 ${String(label).includes("─") ? "opacity-50" : ""}`}
-                      >
-                        <span className="text-xs text-muted-foreground">
-                          {label}
-                        </span>
-                        <span className="font-stat text-xs font-medium">
-                          {value ?? "-"}
-                        </span>
-                      </div>
-                    ))
-                  : null}
-            </div>
-          </div>
-        </div>
+        <PlayerDetailAnalysisGrid>
+          <PlayerInsightPanel
+            isHitter={isHitter}
+            hitter={hitter}
+            pitcher={pitcher}
+            situation={situation}
+            situationLoading={situationLoading}
+            playerName={player.playerName}
+            teamColor={teamColor}
+            radarData={radarData}
+          />
+          <SeasonDetailPanel rows={seasonDetailRows} />
+        </PlayerDetailAnalysisGrid>
 
         {/* 연도별 통산 기록 */}
         {recordLoading ? (
