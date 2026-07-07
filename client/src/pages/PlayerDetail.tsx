@@ -631,8 +631,9 @@ function CareerTable({ record }: { record: PlayerRecord }) {
 }
 
 export default function PlayerDetail() {
-  const params = useParams<{ name: string }>();
-  const playerName = decodeURIComponent(params.name || "");
+  const params = useParams<{ identifier: string }>();
+  const playerIdentifier = decodeURIComponent(params.identifier || "");
+  const isPlayerId = /^\d+$/.test(playerIdentifier);
   const [hitter, setHitter] = useState<Hitter | null>(null);
   const [pitcher, setPitcher] = useState<Pitcher | null>(null);
   const [loading, setLoading] = useState(true);
@@ -642,31 +643,58 @@ export default function PlayerDetail() {
   const [situationLoading, setSituationLoading] = useState(false);
 
   useEffect(() => {
-    if (!playerName) return;
+    if (!playerIdentifier) return;
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
+      setHitter(null);
+      setPitcher(null);
       try {
-        const res = await kboApi.searchPlayers(playerName);
-        for (const p of res.data) {
-          if (p.playerName === playerName) {
-            if ((p as any).type === "pitcher") setPitcher(p as Pitcher);
-            else setHitter(p as Hitter);
-            break;
+        if (isPlayerId) {
+          const [hitterRes, pitcherRes] = await Promise.all([
+            kboApi.getHittersAll("2026"),
+            kboApi.getPitchersAll("2026"),
+          ]);
+          if (cancelled) return;
+
+          const matchedHitter = hitterRes.data.find(
+            p => p.playerId === playerIdentifier
+          );
+          const matchedPitcher = pitcherRes.data.find(
+            p => p.playerId === playerIdentifier
+          );
+
+          setHitter(matchedHitter ?? null);
+          setPitcher(matchedHitter ? null : (matchedPitcher ?? null));
+        } else {
+          const res = await kboApi.searchPlayers(playerIdentifier);
+          if (cancelled) return;
+          const exact =
+            res.data.find(p => p.playerName === playerIdentifier) ??
+            res.data[0];
+
+          if ((exact as any)?.type === "pitcher") {
+            setPitcher(exact as Pitcher);
+            setHitter(null);
+          } else if (exact) {
+            setHitter(exact as Hitter);
+            setPitcher(null);
           }
         }
-        if (res.data.length > 0 && !hitter && !pitcher) {
-          const first = res.data[0];
-          if ((first as any).type === "pitcher") setPitcher(first as Pitcher);
-          else setHitter(first as Hitter);
-        }
       } catch {
-        /* ignore */
+        if (!cancelled) {
+          setHitter(null);
+          setPitcher(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
-  }, [playerName]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isPlayerId, playerIdentifier]);
 
   const player = hitter || pitcher;
   const isHitter = !!hitter;
@@ -751,7 +779,7 @@ export default function PlayerDetail() {
         </Link>
         <div className="py-20 text-center text-muted-foreground">
           <User size={48} className="mx-auto mb-4 opacity-30" />
-          <p>선수 정보를 찾을 수 없습니다: {playerName}</p>
+          <p>선수 정보를 찾을 수 없습니다: {playerIdentifier}</p>
         </div>
       </div>
     );

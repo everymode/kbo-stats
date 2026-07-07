@@ -23,7 +23,7 @@ function Router() {
         <Route path="/teams" component={Teams} />
         <Route path="/teams/:team" component={Teams} />
         <Route path="/players" component={Players} />
-        <Route path="/players/:name" component={PlayerDetail} />
+        <Route path="/players/:identifier" component={PlayerDetail} />
         <Route path="/fa" component={FreeAgents} />
         <Route path="/archive" component={Archive} />
         <Route path="/glossary" component={Glossary} />

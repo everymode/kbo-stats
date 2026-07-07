@@ -252,12 +252,13 @@ function pR($: cheerio.CheerioAPI) {
   return rows;
 }
 
-function pIds($: cheerio.CheerioAPI): Map<string, string> {
-  const ids = new Map<string, string>();
-  $("table tr td a").each((_: number, a: any) => {
-    const href = $(a).attr("href") || "";
-    const m = href.match(/playerId=(\d+)/);
-    if (m) ids.set($(a).text().trim(), m[1]);
+function pRowIds($: cheerio.CheerioAPI): string[] {
+  const ids: string[] = [];
+  $("table tr").each((_: number, row: any) => {
+    const cols = $(row).find("td");
+    if (cols.length === 0) return;
+    const href = cols.find("a[href*='playerId=']").first().attr("href") || "";
+    ids.push(href.match(/playerId=(\d+)/)?.[1] || "");
   });
   return ids;
 }
@@ -825,13 +826,15 @@ async function getHittersAll(season = "2026") {
     const data: any[] = [];
     for (const $ of pages$) {
       const rows = pR($);
-      const ids = pIds($);
-      for (const c of rows) {
+      const rowIds = pRowIds($);
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const c = rows[rowIndex];
         const name = c[1] ?? "";
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
+        const pid = rowIds[rowIndex] || "";
+        const playerKey = pid || `${name}|${c[2] ?? ""}|${c[0] ?? ""}`;
+        if (!name || seen.has(playerKey)) continue;
+        seen.add(playerKey);
         const t = ti(c[2] ?? "");
-        const pid = ids.get(name) || "";
         data.push({
           rank: data.length + 1,
           playerName: name,
@@ -866,10 +869,15 @@ async function getHittersAll(season = "2026") {
       );
       const om = new Map<string, any>();
       for (const $ of ops$) {
-        for (const c of pR($)) {
+        const rows = pR($);
+        const rowIds = pRowIds($);
+        for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+          const c = rows[rowIndex];
           const n = c[1];
-          if (n && !om.has(n))
-            om.set(n, {
+          const pid = rowIds[rowIndex] || "";
+          const key = pid || n;
+          if (n && key && !om.has(key))
+            om.set(key, {
               bb: parseInt(c[4]) || 0,
               ibb: parseInt(c[5]) || 0,
               hbp: parseInt(c[6]) || 0,
@@ -882,7 +890,8 @@ async function getHittersAll(season = "2026") {
         }
       }
       for (const p of data) {
-        const o = om.get(p.playerName) || {};
+        const o =
+          (p.playerId && om.get(p.playerId)) || om.get(p.playerName) || {};
         p.bb = o.bb || 0;
         p.ibb = o.ibb || 0;
         p.hbp = o.hbp || 0;
@@ -911,10 +920,15 @@ async function getHittersAll(season = "2026") {
       );
       const rm = new Map<string, any>();
       for (const $ of run$) {
-        for (const c of pR($)) {
+        const rows = pR($);
+        const rowIds = pRowIds($);
+        for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+          const c = rows[rowIndex];
           const n = c[1];
-          if (n && !rm.has(n))
-            rm.set(n, {
+          const pid = rowIds[rowIndex] || "";
+          const key = pid || n;
+          if (n && key && !rm.has(key))
+            rm.set(key, {
               sb: parseInt(c[5]) || 0,
               cs: parseInt(c[6]) || 0,
               sba: parseInt(c[4]) || 0,
@@ -922,7 +936,8 @@ async function getHittersAll(season = "2026") {
         }
       }
       for (const p of data) {
-        const r = rm.get(p.playerName) || {};
+        const r =
+          (p.playerId && rm.get(p.playerId)) || rm.get(p.playerName) || {};
         p.sb = r.sb || 0;
         p.cs = r.cs || 0;
         p.sba = r.sba || 0;
@@ -950,18 +965,20 @@ async function getPitchersAll(season = "2026") {
     const data: any[] = [];
     for (const $ of pages$) {
       const rows = pR($);
-      const ids = pIds($);
-      for (const c of rows) {
+      const rowIds = pRowIds($);
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const c = rows[rowIndex];
         const name = c[1] ?? "";
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
+        const pid = rowIds[rowIndex] || "";
+        const playerKey = pid || `${name}|${c[2] ?? ""}|${c[0] ?? ""}`;
+        if (!name || seen.has(playerKey)) continue;
+        seen.add(playerKey);
         const t = ti(c[2] ?? "");
         const ip = pI(c[10] || "0");
         const so = parseInt(c[15]) || 0;
         const bb = parseInt(c[13]) || 0;
         const hr = parseInt(c[12]) || 0;
         const hbp = parseInt(c[14]) || 0;
-        const pid = ids.get(name) || "";
         data.push({
           rank: data.length + 1,
           playerName: name,
@@ -1215,7 +1232,7 @@ async function searchPlayers(q: string, season = "2026") {
   for (const p of pr.data)
     if ((p as any).playerName?.includes(q) || (p as any).teamName?.includes(q))
       r.push({ ...p, type: "pitcher" });
-  return { data: r.slice(0, 20), query: q };
+  return { data: r, query: q };
 }
 
 // ─── Vercel Handler ────────────────────────────────────────

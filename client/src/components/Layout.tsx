@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useNavigate } from "@/hooks/useNavigate";
-import { kboApi, SearchPlayer } from "@/lib/kboApi";
+import { getPlayerDetailPath, kboApi, SearchPlayer } from "@/lib/kboApi";
 
 const NAV_ITEMS = [
   { path: "/", label: "홈", icon: Home, description: "오늘의 KBO" },
@@ -66,7 +66,7 @@ export default function Layout({ children }: LayoutProps) {
     const timer = setTimeout(async () => {
       try {
         const res = await kboApi.searchPlayers(searchQuery);
-        setSearchResults(res.data.slice(0, 8));
+        setSearchResults(res.data);
         setSearchOpen(true);
       } catch {
         setSearchResults([]);
@@ -79,7 +79,7 @@ export default function Layout({ children }: LayoutProps) {
   const handleSearchSelect = (player: SearchPlayer) => {
     setSearchQuery("");
     setSearchOpen(false);
-    navigate(`/players/${encodeURIComponent(player.playerName)}`);
+    navigate(getPlayerDetailPath(player));
   };
 
   return (
@@ -175,10 +175,10 @@ export default function Layout({ children }: LayoutProps) {
             />
 
             {searchOpen && searchResults.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[6px] border border-border bg-popover shadow-[0_8px_20px_rgb(17_24_39/0.10)]">
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[min(70vh,480px)] overflow-y-auto rounded-[6px] border border-border bg-popover shadow-[0_8px_20px_rgb(17_24_39/0.10)]">
                 {searchResults.map((player, index) => (
                   <button
-                    key={`${player.playerName}-${index}`}
+                    key={`${player.playerId || player.playerName}-${index}`}
                     className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent"
                     onMouseDown={() => handleSearchSelect(player)}
                   >
