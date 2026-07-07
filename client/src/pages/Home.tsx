@@ -2,7 +2,13 @@ import { Fragment, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, BookOpen, Flag, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Hitter, kboApi, Pitcher, TeamRank } from "@/lib/kboApi";
+import {
+  getPlayerDetailPath,
+  Hitter,
+  kboApi,
+  Pitcher,
+  TeamRank,
+} from "@/lib/kboApi";
 
 const TEAM_LOGO_MAP: Record<string, string> = {
   KT: "/logos/KT.svg",
@@ -386,7 +392,7 @@ function AvgLeadersTable({
         {leaders.slice(0, 5).map((player, index) => (
           <Link
             key={`${player.playerName}-${index}`}
-            href={`/players/${encodeURIComponent(player.playerName)}`}
+            href={getPlayerDetailPath(player)}
             className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
           >
             <span className="text-center font-stat font-black text-foreground">
@@ -439,7 +445,7 @@ function AvgLeadersTable({
                 </td>
                 <td className="px-3 py-2.5">
                   <Link
-                    href={`/players/${encodeURIComponent(player.playerName)}`}
+                    href={getPlayerDetailPath(player)}
                     className="font-bold text-foreground hover:text-primary"
                   >
                     {player.playerName}
@@ -508,7 +514,7 @@ export default function Home() {
               unit: "AVG",
               playerName: topAvg.playerName,
               teamName: topAvg.teamName,
-              href: `/players/${encodeURIComponent(topAvg.playerName)}`,
+              href: getPlayerDetailPath(topAvg),
               photoUrl: topAvg.photoUrl,
               color: topAvg.colors?.primary,
             },
@@ -518,7 +524,7 @@ export default function Home() {
               unit: "HR",
               playerName: topHR.playerName,
               teamName: topHR.teamName,
-              href: `/players/${encodeURIComponent(topHR.playerName)}`,
+              href: getPlayerDetailPath(topHR),
               photoUrl: topHR.photoUrl,
               color: topHR.colors?.primary,
             },
@@ -528,7 +534,7 @@ export default function Home() {
               unit: "ERA",
               playerName: topERA.playerName,
               teamName: topERA.teamName,
-              href: `/players/${encodeURIComponent(topERA.playerName)}`,
+              href: getPlayerDetailPath(topERA),
               photoUrl: topERA.photoUrl,
               color: topERA.colors?.primary,
             },
@@ -538,7 +544,7 @@ export default function Home() {
               unit: "K",
               playerName: topSO.playerName,
               teamName: topSO.teamName,
-              href: `/players/${encodeURIComponent(topSO.playerName)}`,
+              href: getPlayerDetailPath(topSO),
               photoUrl: topSO.photoUrl,
               color: topSO.colors?.primary,
             },

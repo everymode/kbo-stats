@@ -5,10 +5,12 @@ import { fileURLToPath } from "url";
 import {
   getTeamRank,
   getHitters,
+  getHittersAll,
   getHittersOps,
   getHittersCombined,
   getHitterSituation,
   getPitchers,
+  getPitchersAll,
   getLeaderboard,
   searchPlayers,
 } from "./kbo.js";
@@ -27,6 +29,84 @@ async function startServer() {
   app.use("/api/kbo", (_req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     next();
+  });
+
+  app.get("/api/kbo", async (req, res) => {
+    const action = String(req.query.action ?? "health");
+
+    try {
+      switch (action) {
+        case "health":
+          return res.json({
+            status: "ok",
+            timestamp: new Date().toISOString(),
+          });
+        case "team-rank":
+          return res.json(await getTeamRank());
+        case "hitters":
+          return res.json(
+            await getHitters(
+              String(req.query.season ?? "2026"),
+              parseInt(String(req.query.page ?? "1"))
+            )
+          );
+        case "hitters-combined":
+          return res.json(
+            await getHittersCombined(
+              String(req.query.season ?? "2026"),
+              parseInt(String(req.query.page ?? "1"))
+            )
+          );
+        case "hitters-all":
+          return res.json(
+            await getHittersAll(String(req.query.season ?? "2026"))
+          );
+        case "hitters-ops":
+          return res.json(
+            await getHittersOps(
+              String(req.query.season ?? "2026"),
+              parseInt(String(req.query.page ?? "1"))
+            )
+          );
+        case "pitchers":
+          return res.json(
+            await getPitchers(
+              String(req.query.season ?? "2026"),
+              parseInt(String(req.query.page ?? "1"))
+            )
+          );
+        case "pitchers-all":
+          return res.json(
+            await getPitchersAll(String(req.query.season ?? "2026"))
+          );
+        case "leaderboard":
+          return res.json(
+            await getLeaderboard(
+              String(req.query.category ?? "avg"),
+              String(req.query.season ?? "2026"),
+              req.query.team ? String(req.query.team) : undefined,
+              parseInt(String(req.query.limit ?? "30"))
+            )
+          );
+        case "search": {
+          const q = String(req.query.q ?? "");
+          if (!q) return res.json({ data: [], query: "" });
+          return res.json(
+            await searchPlayers(q, String(req.query.season ?? "2026"))
+          );
+        }
+        case "hitter-situation": {
+          const playerId = String(req.query.playerId ?? "");
+          if (!playerId)
+            return res.status(400).json({ error: "playerId required" });
+          return res.json(await getHitterSituation(playerId));
+        }
+        default:
+          return res.status(404).json({ error: "Unknown action", action });
+      }
+    } catch (e: any) {
+      return res.status(503).json({ error: e.message });
+    }
   });
 
   // 헬스체크

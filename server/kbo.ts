@@ -110,6 +110,91 @@ function parseRows($: cheerio.CheerioAPI): string[][] {
   return rows;
 }
 
+function extractForm($: cheerio.CheerioAPI) {
+  const fd: Record<string, string> = {};
+  $('input[type="hidden"]').each((_: number, el: any) => {
+    const name = $(el).attr("name");
+    if (name) fd[name] = ($(el).val() as string) || "";
+  });
+  $("select").each((_: number, el: any) => {
+    const name = $(el).attr("name");
+    if (name) fd[name] = ($(el).find("option[selected]").val() as string) || "";
+  });
+  return fd;
+}
+
+function parseRowPlayerIds($: cheerio.CheerioAPI): string[] {
+  const ids: string[] = [];
+  $("table tr").each((_: number, row: any) => {
+    const cols = $(row).find("td");
+    if (cols.length === 0) return;
+    const href = cols.find("a[href*='playerId=']").first().attr("href") || "";
+    ids.push(href.match(/playerId=(\d+)/)?.[1] || "");
+  });
+  return ids;
+}
+
+async function fetchPagedHtml(
+  url: string,
+  params: Record<string, string>,
+  maxPages: number
+) {
+  const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
+  const res = await axios.get(fullUrl, {
+    headers: HEADERS,
+    timeout: 15000,
+    responseType: "text",
+  });
+  const cookies = (res.headers["set-cookie"] || [])
+    .map((cookie: string) => cookie.split(";")[0])
+    .join("; ");
+  let $page = cheerio.load(res.data);
+  const pages: cheerio.CheerioAPI[] = [$page];
+  const firstKey = ($: cheerio.CheerioAPI) => parseRows($)[0]?.join("|") ?? "";
+  const seenFirst = new Set<string>([firstKey($page)]);
+  const pagerPrefix =
+    "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$";
+
+  for (let page = 2; page <= maxPages; page++) {
+    const target =
+      page % 5 === 1 ? `${pagerPrefix}btnNext` : `${pagerPrefix}btnNo${page}`;
+    const fd = extractForm($page);
+    fd.__EVENTTARGET = target;
+    fd.__EVENTARGUMENT = "";
+    const form = new URLSearchParams();
+    for (const [key, value] of Object.entries(fd)) form.append(key, value);
+
+    try {
+      const next = await axios.post(fullUrl, form.toString(), {
+        headers: {
+          ...HEADERS,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookies,
+          Referer: fullUrl,
+        },
+        timeout: 15000,
+        responseType: "text",
+        validateStatus: (status: number) => status < 400,
+      });
+      const $next = cheerio.load(next.data);
+      const rows = parseRows($next);
+      if (rows.length === 0) break;
+      const key = firstKey($next);
+      if (seenFirst.has(key)) break;
+      seenFirst.add(key);
+      pages.push($next);
+      $page = $next;
+    } catch {
+      break;
+    }
+  }
+
+  return pages;
+}
+
+const PHOTO_CDN =
+  "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle";
+
 export interface SituationSplit {
   label: string;
   avg: string;
@@ -673,11 +758,138 @@ export async function getLeaderboard(
   return { data, category, season, updatedAt: new Date().toISOString() };
 }
 
+export async function getHittersAll(season = "2026") {
+  const cacheKey = `hitters_search_${season}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const pages = await fetchPagedHtml(
+    `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
+    { leagueId: "1", sort: "Game_Cn" },
+    15
+  );
+  const seen = new Set<string>();
+  const data: any[] = [];
+
+  for (const $ of pages) {
+    const rows = parseRows($);
+    const playerIds = parseRowPlayerIds($);
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const cols = rows[rowIndex];
+      const playerName = cols[1] ?? "";
+      const playerId = playerIds[rowIndex] || "";
+      const playerKey =
+        playerId || `${playerName}|${cols[2] ?? ""}|${cols[0] ?? ""}`;
+      if (!playerName || seen.has(playerKey)) continue;
+      seen.add(playerKey);
+      const teamInfo = getTeamInfo(cols[2] ?? "");
+      data.push({
+        rank: data.length + 1,
+        playerName,
+        playerId,
+        photoUrl: playerId ? `${PHOTO_CDN}/${season}/${playerId}.jpg` : "",
+        teamName: cols[2] ?? "",
+        teamShort: teamInfo.short,
+        colors: teamInfo.colors,
+        avg: cols[3] ?? "0",
+        games: parseInt(cols[4]) || 0,
+        pa: parseInt(cols[5]) || 0,
+        ab: parseInt(cols[6]) || 0,
+        runs: parseInt(cols[7]) || 0,
+        hits: parseInt(cols[8]) || 0,
+        doubles: parseInt(cols[9]) || 0,
+        triples: parseInt(cols[10]) || 0,
+        hr: parseInt(cols[11]) || 0,
+        tb: parseInt(cols[12]) || 0,
+        rbi: parseInt(cols[13]) || 0,
+        sac: parseInt(cols[14]) || 0,
+        sf: parseInt(cols[15]) || 0,
+      });
+    }
+  }
+
+  const result = { data, season, updatedAt: new Date().toISOString() };
+  setCached(cacheKey, result);
+  return result;
+}
+
+export async function getPitchersAll(season = "2026") {
+  const cacheKey = `pitchers_search_${season}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const pages = await fetchPagedHtml(
+    `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
+    { leagueId: "1", sort: "Game_Cn" },
+    15
+  );
+  const seen = new Set<string>();
+  const data: any[] = [];
+
+  for (const $ of pages) {
+    const rows = parseRows($);
+    const playerIds = parseRowPlayerIds($);
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const cols = rows[rowIndex];
+      const playerName = cols[1] ?? "";
+      const playerId = playerIds[rowIndex] || "";
+      const playerKey =
+        playerId || `${playerName}|${cols[2] ?? ""}|${cols[0] ?? ""}`;
+      if (!playerName || seen.has(playerKey)) continue;
+      seen.add(playerKey);
+      const teamInfo = getTeamInfo(cols[2] ?? "");
+      const ipStr = cols[10] || "0";
+      const ip = parseInnings(ipStr);
+      const so = parseInt(cols[15]) || 0;
+      const bb = parseInt(cols[13]) || 0;
+      const hr = parseInt(cols[12]) || 0;
+      const hbp = parseInt(cols[14]) || 0;
+
+      data.push({
+        rank: data.length + 1,
+        playerName,
+        playerId,
+        photoUrl: playerId ? `${PHOTO_CDN}/${season}/${playerId}.jpg` : "",
+        teamName: cols[2] ?? "",
+        teamShort: teamInfo.short,
+        colors: teamInfo.colors,
+        era: cols[3] ?? "0.00",
+        games: parseInt(cols[4]) || 0,
+        wins: parseInt(cols[5]) || 0,
+        losses: parseInt(cols[6]) || 0,
+        saves: parseInt(cols[7]) || 0,
+        holds: parseInt(cols[8]) || 0,
+        wpct: cols[9] ?? "0",
+        ip: cols[10] ?? "0",
+        hits: parseInt(cols[11]) || 0,
+        hr,
+        bb,
+        hbp,
+        so,
+        runs: parseInt(cols[16]) || 0,
+        er: parseInt(cols[17]) || 0,
+        whip: cols[18] ?? "0.00",
+        k9: ip > 0 ? ((so / ip) * 9).toFixed(2) : "0.00",
+        bb9: ip > 0 ? ((bb / ip) * 9).toFixed(2) : "0.00",
+        hr9: ip > 0 ? ((hr / ip) * 9).toFixed(2) : "0.00",
+        fip:
+          ip > 0
+            ? ((13 * hr + 3 * (bb + hbp) - 2 * so) / ip + 3.1).toFixed(2)
+            : "0.00",
+      });
+    }
+  }
+
+  const result = { data, season, updatedAt: new Date().toISOString() };
+  setCached(cacheKey, result);
+  return result;
+}
+
 // ─── 선수 검색 ─────────────────────────────────────────────
 export async function searchPlayers(q: string, season = "2026") {
   const [hitterRes, pitcherRes] = await Promise.all([
-    getHittersCombined(season),
-    getPitchers(season),
+    getHittersAll(season),
+    getPitchersAll(season),
   ]);
 
   const results: any[] = [];
@@ -699,5 +911,5 @@ export async function searchPlayers(q: string, season = "2026") {
     }
   }
 
-  return { data: results.slice(0, 20), query: q };
+  return { data: results, query: q };
 }

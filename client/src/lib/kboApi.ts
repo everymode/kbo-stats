@@ -372,3 +372,10 @@ export function getTeamShort(teamName: string): string {
   }
   return teamName;
 }
+
+export function getPlayerDetailPath(player: {
+  playerId?: string;
+  playerName: string;
+}): string {
+  return `/players/${encodeURIComponent(player.playerId || player.playerName)}`;
+}
