@@ -19,6 +19,7 @@ import {
   getHomeRecentGames,
   getHomeLeaders,
   getHomeSummary,
+  getPlayerProfile,
 } from "../api/kbo.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -116,6 +117,14 @@ async function startServer() {
           return res.json(
             await searchPlayers(q, String(req.query.season ?? "2026"))
           );
+        }
+        case "player-profile": {
+          const playerId = String(req.query.playerId ?? "");
+          if (!playerId)
+            return res.status(400).json({ error: "playerId required" });
+          const playerType =
+            String(req.query.playerType) === "pitcher" ? "pitcher" : "hitter";
+          return res.json(await getPlayerProfile(playerId, playerType));
         }
         case "hitter-situation": {
           const playerId = String(req.query.playerId ?? "");

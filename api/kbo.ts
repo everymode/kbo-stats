@@ -8,6 +8,12 @@ import {
   withHitterQualification,
   withPitcherQualification,
 } from "../shared/qualification.js";
+import {
+  parseKboDraftInfo,
+  parseKboJoinInfo,
+  parseKboSalary,
+  type PlayerProfile,
+} from "../shared/playerProfile.js";
 
 // ─── KBO 크롤링 코드 ──────────────────────────────────────
 const BASE_URL = "https://www.koreabaseball.com";
@@ -57,6 +63,7 @@ function ti(name: string) {
 const cache = new Map<string, { data: unknown; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 const HOME_CACHE_TTL = 30 * 60 * 1000;
+const PROFILE_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 function gc<T = any>(k: string, ttl = CACHE_TTL): T | null {
   const e = cache.get(k);
@@ -638,6 +645,90 @@ async function getPlayerRecord(playerId: string) {
   };
   sc(ck, result);
   return result;
+}
+
+type PlayerType = "hitter" | "pitcher";
+
+function readProfileValue(
+  $: cheerio.CheerioAPI,
+  idSuffix: string,
+  label: string
+) {
+  const byId = normalizeText(
+    $(`.player_basic [id$="_${idSuffix}"], [id$="_${idSuffix}"]`).first().text()
+  );
+  if (byId) return byId;
+
+  let value = "";
+  $(".player_basic li").each((_, element) => {
+    if (value) return;
+    const text = normalizeText($(element).text());
+    if (!text.startsWith(label)) return;
+    value = normalizeText(text.slice(label.length).replace(/^[:：]\s*/, ""));
+  });
+  return value;
+}
+
+function normalizeText(value: string) {
+  return value
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchPlayerProfile(
+  playerId: string,
+  playerType: PlayerType
+): Promise<PlayerProfile | null> {
+  const detailName =
+    playerType === "pitcher" ? "PitcherDetail" : "HitterDetail";
+  const sourceUrl = `${BASE_URL}/Record/Player/${detailName}/Basic.aspx?playerId=${encodeURIComponent(playerId)}`;
+  const $ = await fH(sourceUrl);
+  const salaryRaw = readProfileValue($, "lblSalary", "연봉");
+  const draftRaw = readProfileValue($, "lblDraft", "지명순위");
+  const joinInfoRaw = readProfileValue($, "lblJoinInfo", "입단년도");
+  const playerName =
+    readProfileValue($, "lblName", "선수명") ||
+    normalizeText($(".player_basic h4, .player_basic .name").first().text());
+
+  if (!salaryRaw && !draftRaw && !joinInfoRaw) return null;
+
+  const salary = parseKboSalary(salaryRaw);
+  return {
+    playerId,
+    playerType,
+    playerName,
+    entry: parseKboDraftInfo(draftRaw) ?? parseKboJoinInfo(joinInfoRaw),
+    salary: salary ? { ...salary, year: new Date().getFullYear() } : null,
+    sourceUrl,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export async function getPlayerProfile(
+  playerId: string,
+  playerType: PlayerType
+) {
+  const ck = `profile_${playerType}_${playerId}`;
+  const cached = gc<PlayerProfile>(ck, PROFILE_CACHE_TTL);
+  if (cached) return cached;
+
+  return dedup(ck, async () => {
+    const requested = await fetchPlayerProfile(playerId, playerType);
+    const result =
+      requested ??
+      (await fetchPlayerProfile(
+        playerId,
+        playerType === "hitter" ? "pitcher" : "hitter"
+      ));
+
+    if (!result) {
+      throw new Error("KBO 선수 프로필을 찾을 수 없습니다.");
+    }
+
+    sc(ck, result);
+    return result;
+  });
 }
 
 async function getHitterSituation(playerId: string) {
@@ -1469,6 +1560,13 @@ function setHomeCacheHeaders(res: VercelResponse) {
   );
 }
 
+function setProfileCacheHeaders(res: VercelResponse) {
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800"
+  );
+}
+
 async function searchPlayers(q: string, season = "2026") {
   const [hr, pr] = await Promise.all([
     getHittersAll(season),
@@ -1579,6 +1677,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const pid = String(req.query.playerId ?? "");
         if (!pid) return res.status(400).json({ error: "playerId required" });
         return res.json(await getPlayerRecord(pid));
+      }
+      case "player-profile": {
+        const pid = String(req.query.playerId ?? "");
+        if (!pid) return res.status(400).json({ error: "playerId required" });
+        const playerType: PlayerType =
+          String(req.query.playerType) === "pitcher" ? "pitcher" : "hitter";
+        setProfileCacheHeaders(res);
+        return res.json(await getPlayerProfile(pid, playerType));
       }
       case "hitter-situation": {
         const pid = String(req.query.playerId ?? "");
