@@ -3,6 +3,9 @@
  * FastAPI 크롤링 서버와 통신합니다.
  */
 
+import type { PlayerProfile } from "@shared/playerProfile";
+export type { PlayerProfile } from "@shared/playerProfile";
+
 const API_BASE = import.meta.env.VITE_KBO_API_URL || "/api/kbo";
 
 async function fetchApi<T>(
@@ -361,6 +364,10 @@ export const kboApi = {
   /** 선수 연도별 통산 기록 (네이버/스태티즈 출처, WAR/wRC+/wOBA 포함) */
   getPlayerRecord: (playerId: string) =>
     fetchApi<PlayerRecord>("player-record", { playerId }),
+
+  /** KBO 공식 선수 프로필 (프로입단, 현재 연봉) */
+  getPlayerProfile: (playerId: string, playerType: "hitter" | "pitcher") =>
+    fetchApi<PlayerProfile>("player-profile", { playerId, playerType }),
 
   /** 타자 상황별 기록 (볼카운트, 투수유형) */
   getHitterSituation: (playerId: string) =>

@@ -10,10 +10,11 @@ import {
   PitcherSeason,
   HitterSituation,
   SituationSplit,
+  PlayerProfile,
 } from "@/lib/kboApi";
 import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, ExternalLink, User } from "lucide-react";
 import { Link } from "wouter";
 import {
   RadarChart,
@@ -641,6 +642,8 @@ export default function PlayerDetail() {
   const [recordLoading, setRecordLoading] = useState(false);
   const [situation, setSituation] = useState<HitterSituation | null>(null);
   const [situationLoading, setSituationLoading] = useState(false);
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     if (!playerIdentifier) return;
@@ -729,6 +732,34 @@ export default function PlayerDetail() {
     : { primary: "#666", secondary: "#fff" };
   const radarData = pitcher ? getPitcherRadarData(pitcher) : [];
 
+  useEffect(() => {
+    if (!playerId) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const loadProfile = async () => {
+      setProfile(null);
+      setProfileLoading(true);
+      try {
+        const data = await kboApi.getPlayerProfile(
+          playerId,
+          isHitter ? "hitter" : "pitcher"
+        );
+        if (!cancelled) setProfile(data);
+      } catch {
+        if (!cancelled) setProfile(null);
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    };
+    loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [isHitter, playerId]);
+
   // 타자만 상황별 기록을 로드한다. 투수는 기존 레이더 차트를 유지한다.
   useEffect(() => {
     if (!isHitter || !playerId) {
@@ -807,51 +838,102 @@ export default function PlayerDetail() {
           className="overflow-hidden rounded-[6px] border border-border bg-card p-6 shadow-[0_1px_2px_rgb(17_24_39/0.08)] lg:p-7"
           style={{ borderTop: `3px solid ${teamColor.primary}` }}
         >
-          <div className="flex items-center gap-5">
-            <div
-              className="h-16 w-16 shrink-0 overflow-hidden rounded-[4px] border border-border bg-muted lg:h-20 lg:w-20"
-              style={{ borderBottom: `3px solid ${teamColor.primary}` }}
-            >
-              {(player as any).photoUrl ? (
-                <img
-                  src={(player as any).photoUrl}
-                  alt={player.playerName}
-                  className="h-full w-full object-cover object-top grayscale-[15%]"
-                  onError={e => {
-                    const el = e.target as HTMLImageElement;
-                    el.style.display = "none";
-                    el.parentElement!.classList.add(
-                      "flex",
-                      "items-center",
-                      "justify-center"
-                    );
-                    const span = document.createElement("span");
-                    span.className = "text-3xl font-serif font-black";
-                    span.style.color = teamColor.primary;
-                    span.textContent = player.playerName.charAt(0);
-                    el.parentElement!.appendChild(span);
-                  }}
-                />
-              ) : (
-                <div
-                  className="flex h-full w-full items-center justify-center font-serif text-3xl font-black"
-                  style={{ color: teamColor.primary }}
-                >
-                  {player.playerName.charAt(0)}
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch lg:justify-between">
+            <div className="flex min-w-0 items-center gap-5">
+              <div
+                className="h-16 w-16 shrink-0 overflow-hidden rounded-[4px] border border-border bg-muted lg:h-20 lg:w-20"
+                style={{ borderBottom: `3px solid ${teamColor.primary}` }}
+              >
+                {(player as any).photoUrl ? (
+                  <img
+                    src={(player as any).photoUrl}
+                    alt={player.playerName}
+                    className="h-full w-full object-cover object-top grayscale-[15%]"
+                    onError={e => {
+                      const el = e.target as HTMLImageElement;
+                      el.style.display = "none";
+                      el.parentElement!.classList.add(
+                        "flex",
+                        "items-center",
+                        "justify-center"
+                      );
+                      const span = document.createElement("span");
+                      span.className = "text-3xl font-serif font-black";
+                      span.style.color = teamColor.primary;
+                      span.textContent = player.playerName.charAt(0);
+                      el.parentElement!.appendChild(span);
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="flex h-full w-full items-center justify-center font-serif text-3xl font-black"
+                    style={{ color: teamColor.primary }}
+                  >
+                    {player.playerName.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <h1 className="mb-1 font-serif text-3xl font-black leading-none text-foreground lg:text-4xl">
+                  {player.playerName}
+                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <TeamBadge teamName={player.teamName} showFull />
+                  <span className="text-xs text-muted-foreground">
+                    {isHitter ? "타자" : "투수"} · 2026시즌
+                  </span>
                 </div>
-              )}
-            </div>
-            <div>
-              <h1 className="mb-1 font-serif text-3xl font-black leading-none text-foreground lg:text-4xl">
-                {player.playerName}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2">
-                <TeamBadge teamName={player.teamName} showFull />
-                <span className="text-xs text-muted-foreground">
-                  {isHitter ? "타자" : "투수"} · 2026시즌
-                </span>
               </div>
             </div>
+
+            <dl className="grid min-w-0 flex-1 grid-cols-1 border-t border-border sm:grid-cols-2 lg:max-w-[760px] lg:border-l lg:border-t-0">
+              <div className="min-w-0 py-3 sm:pr-6 lg:px-6 lg:py-2">
+                <dt className="mb-1 text-xs font-bold text-muted-foreground">
+                  프로입단
+                </dt>
+                <dd className="min-h-6 text-sm font-semibold leading-6 text-foreground">
+                  {profileLoading ? (
+                    <Skeleton className="mt-1 h-4 w-56 max-w-full bg-secondary" />
+                  ) : profile?.entry ? (
+                    <a
+                      href={profile.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="KBO 공식 선수 프로필에서 보기"
+                      className="inline-flex max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 transition-colors hover:text-note"
+                    >
+                      <span>{profile.entry.display}</span>
+                      <ExternalLink
+                        size={13}
+                        aria-hidden="true"
+                        className="mt-1 shrink-0"
+                      />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">정보 없음</span>
+                  )}
+                </dd>
+              </div>
+              <div className="min-w-0 border-t border-border py-3 sm:border-l sm:border-t-0 sm:pl-6 lg:px-6 lg:py-2">
+                <dt className="mb-1 text-xs font-bold text-muted-foreground">
+                  연봉
+                </dt>
+                <dd className="min-h-6 text-sm font-semibold leading-6 text-foreground">
+                  {profileLoading ? (
+                    <Skeleton className="mt-1 h-4 w-36 max-w-full bg-secondary" />
+                  ) : profile?.salary ? (
+                    <>
+                      {profile.salary.display}
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        ({profile.salary.year})
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">정보 없음</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
           </div>
         </header>
 
