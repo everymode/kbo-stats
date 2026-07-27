@@ -48,9 +48,12 @@ function ti(name: string) {
 }
 
 const cache = new Map<string, { data: unknown; ts: number }>();
-function gc(k: string) {
+const CACHE_TTL = 5 * 60 * 1000;
+const HOME_CACHE_TTL = 30 * 60 * 1000;
+
+function gc<T = any>(k: string, ttl = CACHE_TTL): T | null {
   const e = cache.get(k);
-  return e && Date.now() - e.ts < 300000 ? e.data : null;
+  return e && Date.now() - e.ts < ttl ? (e.data as T) : null;
 }
 function sc(k: string, d: unknown) {
   cache.set(k, { data: d, ts: Date.now() });
@@ -70,6 +73,18 @@ function dedup<T>(key: string, fn: () => Promise<T>): Promise<T> {
   })();
   inflight.set(key, p);
   return p;
+}
+
+function logHomeStage(stage: string, startedAt: number, cacheHit = false) {
+  console.log(
+    JSON.stringify({
+      level: "info",
+      message: "home data stage",
+      stage,
+      ms: Date.now() - startedAt,
+      cacheHit,
+    })
+  );
 }
 
 function pI(s: string) {
@@ -246,8 +261,12 @@ function pR($: cheerio.CheerioAPI) {
     const cols: string[] = [];
     $(row)
       .find("td")
-      .each((_, td) => cols.push($(td).text().trim()));
-    if (cols.length > 0) rows.push(cols);
+      .each((_, td) => {
+        cols.push($(td).text().trim());
+      });
+    if (cols.length > 0) {
+      rows.push(cols);
+    }
   });
   return rows;
 }
@@ -265,6 +284,113 @@ function pRowIds($: cheerio.CheerioAPI): string[] {
 
 const PHOTO_CDN =
   "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle";
+
+async function fHSortedPage(url: string, season: string, sort: string) {
+  const pages = await fHPages(url, { leagueId: "1", sort }, 1, season);
+  const page = pages[0];
+  if (!page) throw new Error(`KBO sorted page unavailable: ${sort}`);
+  return page;
+}
+
+function pHomeHitterBasic($: cheerio.CheerioAPI, season: string) {
+  const rows = pR($);
+  const rowIds = pRowIds($);
+  return rows
+    .map((c, rowIndex) => {
+      const playerId = rowIds[rowIndex] || "";
+      const t = ti(c[2] ?? "");
+      return {
+        rank: parseInt(c[0]) || 0,
+        playerName: c[1] ?? "",
+        playerId,
+        photoUrl: playerId ? `${PHOTO_CDN}/${season}/${playerId}.jpg` : "",
+        teamName: c[2] ?? "",
+        teamShort: t.short,
+        colors: t.colors,
+        avg: c[3] ?? "0",
+        games: parseInt(c[4]) || 0,
+        pa: parseInt(c[5]) || 0,
+        ab: parseInt(c[6]) || 0,
+        runs: parseInt(c[7]) || 0,
+        hits: parseInt(c[8]) || 0,
+        doubles: parseInt(c[9]) || 0,
+        triples: parseInt(c[10]) || 0,
+        hr: parseInt(c[11]) || 0,
+        tb: parseInt(c[12]) || 0,
+        rbi: parseInt(c[13]) || 0,
+        sac: parseInt(c[14]) || 0,
+        sf: parseInt(c[15]) || 0,
+      };
+    })
+    .filter(p => p.rank > 0 && p.playerName);
+}
+
+function pHomeHitterOps($: cheerio.CheerioAPI) {
+  const rows = pR($);
+  const rowIds = pRowIds($);
+  return rows
+    .map((c, rowIndex) => ({
+      playerId: rowIds[rowIndex] || "",
+      playerName: c[1] ?? "",
+      bb: parseInt(c[4]) || 0,
+      ibb: parseInt(c[5]) || 0,
+      hbp: parseInt(c[6]) || 0,
+      so: parseInt(c[7]) || 0,
+      gdp: parseInt(c[8]) || 0,
+      slg: c[9] ?? "0",
+      obp: c[10] ?? "0",
+      ops: c[11] ?? "0",
+    }))
+    .filter(p => p.playerName);
+}
+
+function pHomePitchers($: cheerio.CheerioAPI, season: string) {
+  const rows = pR($);
+  const rowIds = pRowIds($);
+  return rows
+    .map((c, rowIndex) => {
+      const playerId = rowIds[rowIndex] || "";
+      const t = ti(c[2] ?? "");
+      const ip = pI(c[10] || "0");
+      const so = parseInt(c[15]) || 0;
+      const bb = parseInt(c[13]) || 0;
+      const hr = parseInt(c[12]) || 0;
+      const hbp = parseInt(c[14]) || 0;
+      return {
+        rank: parseInt(c[0]) || 0,
+        playerName: c[1] ?? "",
+        playerId,
+        photoUrl: playerId ? `${PHOTO_CDN}/${season}/${playerId}.jpg` : "",
+        teamName: c[2] ?? "",
+        teamShort: t.short,
+        colors: t.colors,
+        era: c[3] ?? "0.00",
+        games: parseInt(c[4]) || 0,
+        wins: parseInt(c[5]) || 0,
+        losses: parseInt(c[6]) || 0,
+        saves: parseInt(c[7]) || 0,
+        holds: parseInt(c[8]) || 0,
+        wpct: c[9] ?? "0",
+        ip: c[10] ?? "0",
+        hits: parseInt(c[11]) || 0,
+        hr,
+        bb,
+        hbp,
+        so,
+        runs: parseInt(c[16]) || 0,
+        er: parseInt(c[17]) || 0,
+        whip: c[18] ?? "0.00",
+        k9: ip > 0 ? ((so / ip) * 9).toFixed(2) : "0.00",
+        bb9: ip > 0 ? ((bb / ip) * 9).toFixed(2) : "0.00",
+        hr9: ip > 0 ? ((hr / ip) * 9).toFixed(2) : "0.00",
+        fip:
+          ip > 0
+            ? ((13 * hr + 3 * (bb + hbp) - 2 * so) / ip + 3.1).toFixed(2)
+            : "0.00",
+      };
+    })
+    .filter(p => p.rank > 0 && p.playerName);
+}
 
 // ─── 네이버 선수 연도별 통산 기록 (스태티즈 출처 WAR/wRC+/wOBA 포함) ─────
 const NAVER_API = "https://api-gw.sports.naver.com";
@@ -695,6 +821,72 @@ async function getTeamRank() {
   const result = { data, updatedAt: new Date().toISOString() };
   sc("tr", result);
   return result;
+}
+
+export async function getHomeStandings(season = "2026") {
+  const startedAt = Date.now();
+  const ck = `home_standings_${season}`;
+  const cached = gc(ck, HOME_CACHE_TTL);
+  if (cached) {
+    logHomeStage("standings", startedAt, true);
+    return cached;
+  }
+
+  return dedup(ck, async () => {
+    const $ = await fH(`${BASE_URL}/Record/TeamRank/TeamRankDaily.aspx`);
+    const teamRank = pR($)
+      .map(c => {
+        const t = ti(c[1] ?? "");
+        return {
+          rank: parseInt(c[0]) || 0,
+          teamName: c[1] ?? "",
+          teamShort: t.short,
+          teamFull: t.full,
+          colors: t.colors,
+          games: parseInt(c[2]) || 0,
+          wins: parseInt(c[3]) || 0,
+          losses: parseInt(c[4]) || 0,
+          draws: parseInt(c[5]) || 0,
+          winRate: c[6] ?? "",
+          gameBehind: c[7] ?? "",
+          recentTen: c[8] ?? "",
+          streak: c[9] ?? "",
+          recentGames: [] as GameResult[],
+          home: c[10] ?? "",
+          away: c[11] ?? "",
+        };
+      })
+      .filter(r => r.rank > 0);
+    const result = {
+      teamRank,
+      season,
+      updatedAt: new Date().toISOString(),
+    };
+    sc(ck, result);
+    logHomeStage("standings", startedAt);
+    return result;
+  });
+}
+
+export async function getHomeRecentGames(season = "2026") {
+  const startedAt = Date.now();
+  const ck = `home_recent_games_${season}`;
+  const cached = gc(ck, HOME_CACHE_TTL);
+  if (cached) {
+    logHomeStage("recent-games", startedAt, true);
+    return cached;
+  }
+
+  return dedup(ck, async () => {
+    const result = {
+      recentGames: await getRecentGames(season),
+      season,
+      updatedAt: new Date().toISOString(),
+    };
+    sc(ck, result);
+    logHomeStage("recent-games", startedAt);
+    return result;
+  });
 }
 
 async function getHitters(season = "2026", page = 1) {
@@ -1184,27 +1376,23 @@ async function getLeaderboard(
   };
 }
 
-async function getHomeSummary(season = "2026") {
-  const ck = `home_${season}`;
-  const c = gc(ck);
+export async function getHomeSummary(season = "2026") {
+  const ck = `home_summary_${season}`;
+  const c = gc(ck, HOME_CACHE_TTL);
   if (c) return c;
   return dedup(ck, async () => {
-    const [teamRank, hitters, pitchers] = await Promise.all([
-      getTeamRank(),
-      getHittersAll(season),
-      getPitchersAll(season),
+    const [standings, recent, leaders] = await Promise.all([
+      getHomeStandings(season),
+      getHomeRecentGames(season),
+      getHomeLeaders(season),
     ]);
-    const teamRankData = teamRank.data;
-    const avgLeaders = topRows(hitters.data, "avg", season, 5, teamRankData);
     const result = {
-      teamRank: teamRankData,
-      avgLeaders,
-      leaders: {
-        avg: avgLeaders[0] ?? null,
-        hr: topRows(hitters.data, "hr", season, 1, teamRankData)[0] ?? null,
-        era: topRows(pitchers.data, "era", season, 1, teamRankData)[0] ?? null,
-        so: topRows(pitchers.data, "so", season, 1, teamRankData)[0] ?? null,
-      },
+      teamRank: standings.teamRank.map((team: any) => ({
+        ...team,
+        recentGames: recent.recentGames[team.teamShort] ?? [],
+      })),
+      avgLeaders: leaders.avgLeaders,
+      leaders: leaders.leaders,
       season,
       updatedAt: new Date().toISOString(),
     };
@@ -1213,10 +1401,92 @@ async function getHomeSummary(season = "2026") {
   });
 }
 
-function setHomeSummaryCacheHeaders(res: VercelResponse) {
+export async function getHomeLeaders(season = "2026") {
+  const startedAt = Date.now();
+  const ck = `home_leaders_${season}`;
+  const cached = gc(ck, HOME_CACHE_TTL);
+  if (cached) {
+    logHomeStage("leaders", startedAt, true);
+    return cached;
+  }
+
+  return dedup(ck, async () => {
+    const [avgBasicPage, avgOpsPage, hrPage, eraPage, soPage] =
+      await Promise.all([
+        fHSortedPage(
+          `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
+          season,
+          "HRA_RT"
+        ),
+        fHSortedPage(
+          `${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`,
+          season,
+          "HRA_RT"
+        ),
+        fHSortedPage(
+          `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
+          season,
+          "HR_CN"
+        ),
+        fHSortedPage(
+          `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
+          season,
+          "ERA_RT"
+        ),
+        fHSortedPage(
+          `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
+          season,
+          "KK_CN"
+        ),
+      ]);
+
+    const opsByPlayer = new Map<string, any>();
+    for (const row of pHomeHitterOps(avgOpsPage)) {
+      if (row.playerId) opsByPlayer.set(row.playerId, row);
+      opsByPlayer.set(row.playerName, row);
+    }
+
+    const avgLeaders = pHomeHitterBasic(avgBasicPage, season)
+      .slice(0, 5)
+      .map((player, index) => {
+        const ops =
+          (player.playerId && opsByPlayer.get(player.playerId)) ||
+          opsByPlayer.get(player.playerName);
+        if (!ops) {
+          throw new Error(`OPS data missing for ${player.playerName}`);
+        }
+        return {
+          ...player,
+          ...ops,
+          avg: player.avg,
+          leaderboardRank: index + 1,
+        };
+      });
+    const hr = pHomeHitterBasic(hrPage, season)[0] ?? null;
+    const era = pHomePitchers(eraPage, season)[0] ?? null;
+    const so = pHomePitchers(soPage, season)[0] ?? null;
+
+    const result = {
+      avgLeaders,
+      leaders: {
+        avg: avgLeaders[0] ?? null,
+        hr: hr ? { ...hr, leaderboardRank: 1 } : null,
+        era: era ? { ...era, leaderboardRank: 1 } : null,
+        so: so ? { ...so, leaderboardRank: 1 } : null,
+      },
+      season,
+      updatedAt: new Date().toISOString(),
+    };
+    sc(ck, result);
+    logHomeStage("leaders", startedAt);
+    return result;
+  });
+}
+
+function setHomeCacheHeaders(res: VercelResponse) {
   res.setHeader(
     "Cache-Control",
-    "public, max-age=0, s-maxage=300, stale-while-revalidate=3600"
+    "public, max-age=0, s-maxage=1800, stale-while-revalidate=86400"
   );
 }
 
@@ -1242,15 +1512,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const action = String(req.query.action ?? "health");
+  const requestStartedAt = Date.now();
 
   try {
     switch (action) {
       case "health":
         return res.json({ status: "ok", ts: new Date().toISOString() });
       case "home-summary": {
-        setHomeSummaryCacheHeaders(res);
+        setHomeCacheHeaders(res);
         return res.json(
           await getHomeSummary(String(req.query.season ?? "2026"))
+        );
+      }
+      case "home-standings": {
+        setHomeCacheHeaders(res);
+        return res.json(
+          await getHomeStandings(String(req.query.season ?? "2026"))
+        );
+      }
+      case "home-recent-games": {
+        setHomeCacheHeaders(res);
+        return res.json(
+          await getHomeRecentGames(String(req.query.season ?? "2026"))
+        );
+      }
+      case "home-leaders": {
+        setHomeCacheHeaders(res);
+        return res.json(
+          await getHomeLeaders(String(req.query.season ?? "2026"))
         );
       }
       case "team-rank":
@@ -1322,5 +1611,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (e: any) {
     return res.status(503).json({ error: e.message });
+  } finally {
+    if (action.startsWith("home-")) {
+      logHomeStage(`request:${action}`, requestStartedAt);
+    }
   }
 }

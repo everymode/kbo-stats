@@ -157,6 +157,30 @@ export interface HomeSummaryResponse {
   updatedAt: string;
 }
 
+export interface HomeStandingsResponse {
+  teamRank: TeamRank[];
+  season: string;
+  updatedAt: string;
+}
+
+export interface HomeRecentGamesResponse {
+  recentGames: Record<string, ("W" | "D" | "L")[]>;
+  season: string;
+  updatedAt: string;
+}
+
+export interface HomeLeadersResponse {
+  avgLeaders: Hitter[];
+  leaders: {
+    avg: Hitter | null;
+    hr: Hitter | null;
+    era: Pitcher | null;
+    so: Pitcher | null;
+  };
+  season: string;
+  updatedAt: string;
+}
+
 export interface SituationSplit {
   label: string;
   avg: string;
@@ -254,6 +278,15 @@ export type SearchPlayer = (Hitter | Pitcher) & {
 export const kboApi = {
   getHomeSummary: (season = "2026") =>
     fetchApi<HomeSummaryResponse>("home-summary", { season }),
+
+  getHomeStandings: (season = "2026") =>
+    fetchApi<HomeStandingsResponse>("home-standings", { season }),
+
+  getHomeRecentGames: (season = "2026") =>
+    fetchApi<HomeRecentGamesResponse>("home-recent-games", { season }),
+
+  getHomeLeaders: (season = "2026") =>
+    fetchApi<HomeLeadersResponse>("home-leaders", { season }),
 
   /** 팀 순위 */
   getTeamRank: () =>

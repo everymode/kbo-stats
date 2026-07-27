@@ -14,6 +14,12 @@ import {
   getLeaderboard,
   searchPlayers,
 } from "./kbo.js";
+import {
+  getHomeStandings,
+  getHomeRecentGames,
+  getHomeLeaders,
+  getHomeSummary,
+} from "../api/kbo.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +47,22 @@ async function startServer() {
             status: "ok",
             timestamp: new Date().toISOString(),
           });
+        case "home-summary":
+          return res.json(
+            await getHomeSummary(String(req.query.season ?? "2026"))
+          );
+        case "home-standings":
+          return res.json(
+            await getHomeStandings(String(req.query.season ?? "2026"))
+          );
+        case "home-recent-games":
+          return res.json(
+            await getHomeRecentGames(String(req.query.season ?? "2026"))
+          );
+        case "home-leaders":
+          return res.json(
+            await getHomeLeaders(String(req.query.season ?? "2026"))
+          );
         case "team-rank":
           return res.json(await getTeamRank());
         case "hitters":

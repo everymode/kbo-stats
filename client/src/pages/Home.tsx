@@ -52,6 +52,13 @@ function formatToday() {
   });
 }
 
+function formatUpdatedAt(updatedAt: string) {
+  return new Date(updatedAt).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function ResultChip({ result }: { result: Result }) {
   const tone =
     result === "W"
@@ -69,7 +76,29 @@ function ResultChip({ result }: { result: Result }) {
   );
 }
 
-function RecentTenBlocks({ recentGames }: { recentGames: Result[] }) {
+function RecentTenBlocks({
+  recentGames,
+  loading,
+}: {
+  recentGames: Result[];
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div
+        className="flex justify-end gap-[3px]"
+        aria-label="최근 10경기 불러오는 중"
+      >
+        {Array.from({ length: 10 }).map((_, index) => (
+          <Skeleton
+            key={index}
+            className="h-[18px] w-[18px] rounded-[2px] bg-muted"
+          />
+        ))}
+      </div>
+    );
+  }
+
   if (!recentGames || recentGames.length === 0) {
     return <span className="text-xs text-muted-foreground">-</span>;
   }
@@ -202,9 +231,11 @@ function LeaderCard({
 function TeamStandingsTable({
   teams,
   loading,
+  recentGamesLoading,
 }: {
   teams: TeamRank[];
   loading: boolean;
+  recentGamesLoading: boolean;
 }) {
   if (loading) {
     return (
@@ -334,7 +365,10 @@ function TeamStandingsTable({
                     {team.gameBehind === "0" ? "-" : team.gameBehind}
                   </td>
                   <td className="px-3 py-3">
-                    <RecentTenBlocks recentGames={team.recentGames} />
+                    <RecentTenBlocks
+                      recentGames={team.recentGames}
+                      loading={recentGamesLoading}
+                    />
                   </td>
                 </tr>
                 {index === 4 && (
@@ -482,93 +516,114 @@ export default function Home() {
   const [teamRank, setTeamRank] = useState<TeamRank[]>([]);
   const [avgLeaders, setAvgLeaders] = useState<Hitter[]>([]);
   const [leaderSummaries, setLeaderSummaries] = useState<LeaderSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [standingsLoading, setStandingsLoading] = useState(true);
+  const [recentGamesLoading, setRecentGamesLoading] = useState(true);
+  const [leadersLoading, setLeadersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadRecords() {
-      setLoading(true);
-      setError(null);
-
+    async function loadStandings() {
       try {
-        const summary = await kboApi.getHomeSummary("2026");
+        const standings = await kboApi.getHomeStandings("2026");
 
         if (cancelled) return;
+        setTeamRank(standings.teamRank);
+        setLastUpdated(formatUpdatedAt(standings.updatedAt));
+        setStandingsLoading(false);
 
-        const avgData = summary.avgLeaders;
-        const topAvg = summary.leaders.avg;
-        const topHR = summary.leaders.hr;
-        const topERA = summary.leaders.era;
-        const topSO = summary.leaders.so;
+        try {
+          const recent = await kboApi.getHomeRecentGames("2026");
+          if (cancelled) return;
+          setTeamRank(current =>
+            current.map(team => ({
+              ...team,
+              recentGames: recent.recentGames[team.teamShort] ?? [],
+            }))
+          );
+        } catch {
+          // 팀 순위는 유지하고 최근 경기 칩만 빈 상태로 둔다.
+        } finally {
+          if (!cancelled) setRecentGamesLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setError("팀 순위 기록을 불러오지 못했습니다.");
+          setTeamRank([]);
+          setRecentGamesLoading(false);
+        }
+      } finally {
+        if (!cancelled) setStandingsLoading(false);
+      }
+    }
 
-        setTeamRank(summary.teamRank);
-        setAvgLeaders(avgData);
+    async function loadLeaders() {
+      try {
+        const summary = await kboApi.getHomeLeaders("2026");
+        if (cancelled) return;
+
+        setAvgLeaders(summary.avgLeaders);
         setLeaderSummaries(
           [
-            topAvg && {
+            summary.leaders.avg && {
               label: "타율 1위",
-              value: topAvg.avg,
+              value: summary.leaders.avg.avg,
               unit: "AVG",
-              playerName: topAvg.playerName,
-              teamName: topAvg.teamName,
-              href: getPlayerDetailPath(topAvg),
-              photoUrl: topAvg.photoUrl,
-              color: topAvg.colors?.primary,
+              playerName: summary.leaders.avg.playerName,
+              teamName: summary.leaders.avg.teamName,
+              href: getPlayerDetailPath(summary.leaders.avg),
+              photoUrl: summary.leaders.avg.photoUrl,
+              color: summary.leaders.avg.colors?.primary,
             },
-            topHR && {
+            summary.leaders.hr && {
               label: "홈런 1위",
-              value: String(topHR.hr),
+              value: String(summary.leaders.hr.hr),
               unit: "HR",
-              playerName: topHR.playerName,
-              teamName: topHR.teamName,
-              href: getPlayerDetailPath(topHR),
-              photoUrl: topHR.photoUrl,
-              color: topHR.colors?.primary,
+              playerName: summary.leaders.hr.playerName,
+              teamName: summary.leaders.hr.teamName,
+              href: getPlayerDetailPath(summary.leaders.hr),
+              photoUrl: summary.leaders.hr.photoUrl,
+              color: summary.leaders.hr.colors?.primary,
             },
-            topERA && {
+            summary.leaders.era && {
               label: "평균자책점 1위",
-              value: topERA.era,
+              value: summary.leaders.era.era,
               unit: "ERA",
-              playerName: topERA.playerName,
-              teamName: topERA.teamName,
-              href: getPlayerDetailPath(topERA),
-              photoUrl: topERA.photoUrl,
-              color: topERA.colors?.primary,
+              playerName: summary.leaders.era.playerName,
+              teamName: summary.leaders.era.teamName,
+              href: getPlayerDetailPath(summary.leaders.era),
+              photoUrl: summary.leaders.era.photoUrl,
+              color: summary.leaders.era.colors?.primary,
             },
-            topSO && {
+            summary.leaders.so && {
               label: "탈삼진 1위",
-              value: String(topSO.so),
+              value: String(summary.leaders.so.so),
               unit: "K",
-              playerName: topSO.playerName,
-              teamName: topSO.teamName,
-              href: getPlayerDetailPath(topSO),
-              photoUrl: topSO.photoUrl,
-              color: topSO.colors?.primary,
+              playerName: summary.leaders.so.playerName,
+              teamName: summary.leaders.so.teamName,
+              href: getPlayerDetailPath(summary.leaders.so),
+              photoUrl: summary.leaders.so.photoUrl,
+              color: summary.leaders.so.colors?.primary,
             },
           ].filter(Boolean) as LeaderSummary[]
         );
-        setLastUpdated(
-          new Date(summary.updatedAt).toLocaleTimeString("ko-KR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        );
+        setLastUpdated(formatUpdatedAt(summary.updatedAt));
       } catch {
         if (!cancelled) {
-          setError("기록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-          setTeamRank([]);
+          setError(current => current ?? "리더 기록을 불러오지 못했습니다.");
           setAvgLeaders([]);
           setLeaderSummaries([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLeadersLoading(false);
       }
     }
 
-    loadRecords();
+    setError(null);
+    loadStandings();
+    loadLeaders();
 
     return () => {
       cancelled = true;
@@ -642,7 +697,11 @@ export default function Home() {
                 </Link>
               }
             >
-              <TeamStandingsTable teams={teamRank} loading={loading} />
+              <TeamStandingsTable
+                teams={teamRank}
+                loading={standingsLoading}
+                recentGamesLoading={recentGamesLoading}
+              />
             </LedgerPanel>
 
             <LedgerPanel
@@ -658,7 +717,7 @@ export default function Home() {
                 </Link>
               }
             >
-              <AvgLeadersTable leaders={avgLeaders} loading={loading} />
+              <AvgLeadersTable leaders={avgLeaders} loading={leadersLoading} />
             </LedgerPanel>
           </div>
 
@@ -673,7 +732,7 @@ export default function Home() {
                 </span>
               </div>
 
-              {loading ? (
+              {leadersLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, index) => (
                     <Skeleton
