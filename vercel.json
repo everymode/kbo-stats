@@ -2,12 +2,11 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist/public",
   "framework": "vite",
+  "regions": ["icn1"],
   "functions": {
     "api/kbo.ts": {
       "maxDuration": 30
     }
   },
-  "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }
