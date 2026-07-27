@@ -1,6 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import axios from "axios";
 import * as cheerio from "cheerio";
+import {
+  createQualificationContext,
+  filterQualifiedForCategory,
+  inningsToDecimal,
+  withHitterQualification,
+  withPitcherQualification,
+} from "../shared/qualification.js";
 
 // ─── KBO 크롤링 코드 ──────────────────────────────────────
 const BASE_URL = "https://www.koreabaseball.com";
@@ -88,11 +95,7 @@ function logHomeStage(stage: string, startedAt: number, cacheHit = false) {
 }
 
 function pI(s: string) {
-  if (!s) return 0;
-  const p = s.trim().split(" ");
-  if (p.length === 1) return parseFloat(p[0]) || 0;
-  const w = parseInt(p[0]) || 0;
-  return w + (p[1] === "1/3" ? 1 / 3 : p[1] === "2/3" ? 2 / 3 : 0);
+  return inningsToDecimal(s);
 }
 
 async function fH(url: string, params?: Record<string, string>) {
@@ -868,6 +871,16 @@ export async function getHomeStandings(season = "2026") {
   });
 }
 
+async function getQualificationContext(season: string) {
+  const currentSeason = new Date().getFullYear().toString();
+  if (season !== currentSeason) {
+    return createQualificationContext([], season, currentSeason);
+  }
+
+  const standings = await getHomeStandings(season);
+  return createQualificationContext(standings.teamRank, season, currentSeason);
+}
+
 export async function getHomeRecentGames(season = "2026") {
   const startedAt = Date.now();
   const ck = `home_recent_games_${season}`;
@@ -1008,12 +1021,10 @@ async function getHittersAll(season = "2026") {
   if (c) return c;
   return dedup(ck, async () => {
     const url = `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`;
-    const pages$ = await fHPages(
-      url,
-      { leagueId: "1", sort: "Game_Cn" },
-      15,
-      season
-    );
+    const [pages$, qualificationContext] = await Promise.all([
+      fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 15, season),
+      getQualificationContext(season),
+    ]);
     const seen = new Set<string>();
     const data: any[] = [];
     for (const $ of pages$) {
@@ -1135,7 +1146,14 @@ async function getHittersAll(season = "2026") {
         p.sba = r.sba || 0;
       }
     } catch {}
-    const result = { data, season, updatedAt: new Date().toISOString() };
+    const qualifiedData = data.map(player =>
+      withHitterQualification(player, qualificationContext)
+    );
+    const result = {
+      data: qualifiedData,
+      season,
+      updatedAt: new Date().toISOString(),
+    };
     sc(ck, result);
     return result;
   });
@@ -1147,12 +1165,10 @@ async function getPitchersAll(season = "2026") {
   if (c) return c;
   return dedup(ck, async () => {
     const url = `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`;
-    const pages$ = await fHPages(
-      url,
-      { leagueId: "1", sort: "Game_Cn" },
-      15,
-      season
-    );
+    const [pages$, qualificationContext] = await Promise.all([
+      fHPages(url, { leagueId: "1", sort: "Game_Cn" }, 15, season),
+      getQualificationContext(season),
+    ]);
     const seen = new Set<string>();
     const data: any[] = [];
     for (const $ of pages$) {
@@ -1205,7 +1221,14 @@ async function getPitchersAll(season = "2026") {
         });
       }
     }
-    const result = { data, season, updatedAt: new Date().toISOString() };
+    const qualifiedData = data.map(player =>
+      withPitcherQualification(player, qualificationContext)
+    );
+    const result = {
+      data: qualifiedData,
+      season,
+      updatedAt: new Date().toISOString(),
+    };
     sc(ck, result);
     return result;
   });
@@ -1263,48 +1286,6 @@ async function getPitchers(season = "2026", page = 1) {
   return result;
 }
 
-function topRows(
-  rd: any[],
-  cat: string,
-  season: string,
-  limit: number,
-  teamRankData?: any[]
-) {
-  const hRate = new Set([
-    "avg",
-    "obp",
-    "slg",
-    "ops",
-    "iso",
-    "babip",
-    "bbPct",
-    "kPct",
-  ]);
-  const pRate = new Set(["era", "whip", "fip", "k9", "bb9", "hr9"]);
-  let rows = [...rd];
-  if (hRate.has(cat)) {
-    const maxG = Math.max(...rows.map((p: any) => p.games || 0), 1);
-    const minPA = Math.floor(maxG * 3.1);
-    rows = rows.filter((p: any) => (p.pa || 0) >= minPA);
-  } else if (pRate.has(cat)) {
-    const cy = new Date().getFullYear().toString();
-    let tg = 144;
-    if (season === cy && teamRankData?.length)
-      tg = Math.max(...teamRankData.map((t: any) => t.games || 0));
-    rows = rows.filter((p: any) => pI(p.ip || "0") >= tg);
-  }
-
-  const lb = new Set(["era", "whip", "fip", "bb9", "hr9", "kPct"]);
-  return rows
-    .sort((a: any, b: any) => {
-      const va = parseFloat(String(a[cat] ?? "0")) || 0;
-      const vb = parseFloat(String(b[cat] ?? "0")) || 0;
-      return lb.has(cat) ? va - vb : vb - va;
-    })
-    .slice(0, limit)
-    .map((i: any, idx: number) => ({ ...i, leaderboardRank: idx + 1 }));
-}
-
 async function getLeaderboard(
   cat: string,
   season = "2026",
@@ -1332,33 +1313,7 @@ async function getLeaderboard(
       (p: any) => p.teamName?.includes(team) || p.teamShort?.includes(team)
     );
 
-  // 규정타석/규정이닝 필터 (비율 스탯에만 적용)
-  const hRate = new Set([
-    "avg",
-    "obp",
-    "slg",
-    "ops",
-    "iso",
-    "babip",
-    "bbPct",
-    "kPct",
-  ]);
-  const pRate = new Set(["era", "whip", "fip", "k9", "bb9", "hr9"]);
-  if (hRate.has(cat)) {
-    const maxG = Math.max(...rd.map((p: any) => p.games || 0), 1);
-    const minPA = Math.floor(maxG * 3.1);
-    rd = rd.filter((p: any) => (p.pa || 0) >= minPA);
-  } else if (pRate.has(cat)) {
-    const cy = new Date().getFullYear().toString();
-    let tg = 144;
-    if (season === cy) {
-      try {
-        const tr: any = await getTeamRank();
-        tg = Math.max(...tr.data.map((t: any) => t.games || 0));
-      } catch {}
-    }
-    rd = rd.filter((p: any) => pI(p.ip || "0") >= tg);
-  }
+  rd = filterQualifiedForCategory(rd, cat);
 
   const lb = new Set(["era", "whip", "fip", "bb9", "hr9", "kPct"]);
   rd = [...rd].sort((a: any, b: any) => {
@@ -1411,34 +1366,41 @@ export async function getHomeLeaders(season = "2026") {
   }
 
   return dedup(ck, async () => {
-    const [avgBasicPage, avgOpsPage, hrPage, eraPage, soPage] =
-      await Promise.all([
-        fHSortedPage(
-          `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
-          season,
-          "HRA_RT"
-        ),
-        fHSortedPage(
-          `${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`,
-          season,
-          "HRA_RT"
-        ),
-        fHSortedPage(
-          `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
-          season,
-          "HR_CN"
-        ),
-        fHSortedPage(
-          `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
-          season,
-          "ERA_RT"
-        ),
-        fHSortedPage(
-          `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
-          season,
-          "KK_CN"
-        ),
-      ]);
+    const [
+      avgBasicPage,
+      avgOpsPage,
+      hrPage,
+      eraPage,
+      soPage,
+      qualificationContext,
+    ] = await Promise.all([
+      fHSortedPage(
+        `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
+        season,
+        "HRA_RT"
+      ),
+      fHSortedPage(
+        `${BASE_URL}/Record/Player/HitterBasic/Basic2.aspx`,
+        season,
+        "HRA_RT"
+      ),
+      fHSortedPage(
+        `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
+        season,
+        "HR_CN"
+      ),
+      fHSortedPage(
+        `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
+        season,
+        "ERA_RT"
+      ),
+      fHSortedPage(
+        `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
+        season,
+        "KK_CN"
+      ),
+      getQualificationContext(season),
+    ]);
 
     const opsByPlayer = new Map<string, any>();
     for (const row of pHomeHitterOps(avgOpsPage)) {
@@ -1446,7 +1408,12 @@ export async function getHomeLeaders(season = "2026") {
       opsByPlayer.set(row.playerName, row);
     }
 
-    const avgLeaders = pHomeHitterBasic(avgBasicPage, season)
+    const avgLeaders = filterQualifiedForCategory(
+      pHomeHitterBasic(avgBasicPage, season).map(player =>
+        withHitterQualification(player, qualificationContext)
+      ),
+      "avg"
+    )
       .slice(0, 5)
       .map((player, index) => {
         const ops =
@@ -1462,9 +1429,21 @@ export async function getHomeLeaders(season = "2026") {
           leaderboardRank: index + 1,
         };
       });
-    const hr = pHomeHitterBasic(hrPage, season)[0] ?? null;
-    const era = pHomePitchers(eraPage, season)[0] ?? null;
-    const so = pHomePitchers(soPage, season)[0] ?? null;
+    const hrRow = pHomeHitterBasic(hrPage, season)[0];
+    const hr = hrRow
+      ? withHitterQualification(hrRow, qualificationContext)
+      : null;
+    const era =
+      filterQualifiedForCategory(
+        pHomePitchers(eraPage, season).map(player =>
+          withPitcherQualification(player, qualificationContext)
+        ),
+        "era"
+      )[0] ?? null;
+    const soRow = pHomePitchers(soPage, season)[0];
+    const so = soRow
+      ? withPitcherQualification(soRow, qualificationContext)
+      : null;
 
     const result = {
       avgLeaders,

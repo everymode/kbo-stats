@@ -187,17 +187,7 @@ export default function Players() {
       (p as any).teamShort?.includes(team);
     const matchSearch =
       !search || p.playerName.includes(search) || p.teamName.includes(search);
-    // 규정타석/규정이닝 필터 (KBO: 타석=팀경기수×3.1, 이닝=팀경기수×1.0, 대략 40경기 기준)
-    let matchQualified = true;
-    if (qualifiedOnly) {
-      if (tab === "hitter") {
-        matchQualified = ((p as Hitter).pa || 0) >= 124; // ~40경기 × 3.1
-      } else {
-        const ipStr = (p as Pitcher).ip || "0";
-        const ipNum = parseFloat(ipStr.split(" ")[0]) || 0;
-        matchQualified = ipNum >= 40; // ~40경기 × 1.0
-      }
-    }
+    const matchQualified = !qualifiedOnly || p.qualified === true;
     return matchTeam && matchSearch && matchQualified;
   });
 

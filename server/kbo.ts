@@ -5,6 +5,15 @@
 
 import axios from "axios";
 import * as cheerio from "cheerio";
+import {
+  createQualificationContext,
+  filterQualifiedForCategory,
+  HITTER_RATE_CATEGORIES,
+  inningsToDecimal,
+  PITCHER_RATE_CATEGORIES,
+  withHitterQualification,
+  withPitcherQualification,
+} from "../shared/qualification.js";
 
 const BASE_URL = "https://www.koreabaseball.com";
 
@@ -73,14 +82,7 @@ function setCached(key: string, data: unknown) {
 
 // ─── 이닝 파싱 ("39 1/3" → 39.333) ──────────────────────
 function parseInnings(ipStr: string): number {
-  if (!ipStr) return 0;
-  const parts = ipStr.trim().split(" ");
-  if (parts.length === 1) return parseFloat(parts[0]) || 0;
-  const whole = parseInt(parts[0]) || 0;
-  const frac = parts[1];
-  if (frac === "1/3") return whole + 1 / 3;
-  if (frac === "2/3") return whole + 2 / 3;
-  return whole;
+  return inningsToDecimal(ipStr);
 }
 
 async function fetchHtml(
@@ -449,6 +451,16 @@ export async function getTeamRank() {
   return result;
 }
 
+async function getQualificationContext(season: string) {
+  const currentSeason = new Date().getFullYear().toString();
+  if (season !== currentSeason) {
+    return createQualificationContext([], season, currentSeason);
+  }
+
+  const standings = await getTeamRank();
+  return createQualificationContext(standings.data, season, currentSeason);
+}
+
 // ─── 타자 기본 기록 (Basic1: AVG, HR, RBI, H 등) ───────────
 export async function getHitters(season = "2026", page = 1) {
   const cacheKey = `hitters_${season}_${page}`;
@@ -743,6 +755,24 @@ export async function getLeaderboard(
     );
   }
 
+  if (HITTER_RATE_CATEGORIES.has(category)) {
+    const qualificationContext = await getQualificationContext(season);
+    rawData = filterQualifiedForCategory(
+      rawData.map(player =>
+        withHitterQualification(player, qualificationContext)
+      ),
+      category
+    );
+  } else if (PITCHER_RATE_CATEGORIES.has(category)) {
+    const qualificationContext = await getQualificationContext(season);
+    rawData = filterQualifiedForCategory(
+      rawData.map(player =>
+        withPitcherQualification(player, qualificationContext)
+      ),
+      category
+    );
+  }
+
   const lowerBetter = new Set(["era", "whip", "fip", "bb9", "hr9", "kPct"]);
   rawData = [...rawData].sort((a: any, b: any) => {
     const va = parseFloat(String(a[category] ?? "0")) || 0;
@@ -763,11 +793,14 @@ export async function getHittersAll(season = "2026") {
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  const pages = await fetchPagedHtml(
-    `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
-    { leagueId: "1", sort: "Game_Cn" },
-    15
-  );
+  const [pages, qualificationContext] = await Promise.all([
+    fetchPagedHtml(
+      `${BASE_URL}/Record/Player/HitterBasic/Basic1.aspx`,
+      { leagueId: "1", sort: "Game_Cn" },
+      15
+    ),
+    getQualificationContext(season),
+  ]);
   const seen = new Set<string>();
   const data: any[] = [];
 
@@ -808,7 +841,14 @@ export async function getHittersAll(season = "2026") {
     }
   }
 
-  const result = { data, season, updatedAt: new Date().toISOString() };
+  const qualifiedData = data.map(player =>
+    withHitterQualification(player, qualificationContext)
+  );
+  const result = {
+    data: qualifiedData,
+    season,
+    updatedAt: new Date().toISOString(),
+  };
   setCached(cacheKey, result);
   return result;
 }
@@ -818,11 +858,14 @@ export async function getPitchersAll(season = "2026") {
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  const pages = await fetchPagedHtml(
-    `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
-    { leagueId: "1", sort: "Game_Cn" },
-    15
-  );
+  const [pages, qualificationContext] = await Promise.all([
+    fetchPagedHtml(
+      `${BASE_URL}/Record/Player/PitcherBasic/Basic1.aspx`,
+      { leagueId: "1", sort: "Game_Cn" },
+      15
+    ),
+    getQualificationContext(season),
+  ]);
   const seen = new Set<string>();
   const data: any[] = [];
 
@@ -880,7 +923,14 @@ export async function getPitchersAll(season = "2026") {
     }
   }
 
-  const result = { data, season, updatedAt: new Date().toISOString() };
+  const qualifiedData = data.map(player =>
+    withPitcherQualification(player, qualificationContext)
+  );
+  const result = {
+    data: qualifiedData,
+    season,
+    updatedAt: new Date().toISOString(),
+  };
   setCached(cacheKey, result);
   return result;
 }
