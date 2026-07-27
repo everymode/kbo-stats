@@ -87,6 +87,9 @@ export interface Hitter {
   kPct?: string; // K%
   iso?: string; // 순수장타율
   babip?: string; // 인플레이 타구 타율
+  qualified?: boolean;
+  teamGames?: number;
+  requiredPa?: number;
 }
 
 export interface Pitcher {
@@ -119,6 +122,9 @@ export interface Pitcher {
   bb9?: string; // 9이닝당 볼넷
   hr9?: string; // 9이닝당 피홈런
   fip?: string; // 수비무관 평균자책점
+  qualified?: boolean;
+  teamGames?: number;
+  requiredIp?: number;
 }
 
 export interface Schedule {
