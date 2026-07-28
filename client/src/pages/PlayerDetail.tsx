@@ -654,21 +654,19 @@ export default function PlayerDetail() {
       setPitcher(null);
       try {
         if (isPlayerId) {
-          const [hitterRes, pitcherRes] = await Promise.all([
-            kboApi.getHittersAll("2026"),
-            kboApi.getPitchersAll("2026"),
-          ]);
+          const summary = await kboApi.getPlayerSummary(
+            playerIdentifier,
+            "2026"
+          );
           if (cancelled) return;
 
-          const matchedHitter = hitterRes.data.find(
-            p => p.playerId === playerIdentifier
-          );
-          const matchedPitcher = pitcherRes.data.find(
-            p => p.playerId === playerIdentifier
-          );
-
-          setHitter(matchedHitter ?? null);
-          setPitcher(matchedHitter ? null : (matchedPitcher ?? null));
+          if (summary.type === "pitcher") {
+            setPitcher(summary as Pitcher);
+            setHitter(null);
+          } else {
+            setHitter(summary as Hitter);
+            setPitcher(null);
+          }
         } else {
           const res = await kboApi.searchPlayers(playerIdentifier);
           if (cancelled) return;

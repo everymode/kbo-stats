@@ -12,7 +12,6 @@ import {
   getPitchers,
   getPitchersAll,
   getLeaderboard,
-  searchPlayers,
 } from "./kbo.js";
 import {
   getHomeStandings,
@@ -20,6 +19,8 @@ import {
   getHomeLeaders,
   getHomeSummary,
   getPlayerProfile,
+  getPlayerSummary,
+  searchPlayers,
 } from "../api/kbo.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -116,6 +117,18 @@ async function startServer() {
           if (!q) return res.json({ data: [], query: "" });
           return res.json(
             await searchPlayers(q, String(req.query.season ?? "2026"))
+          );
+        }
+        case "player-summary": {
+          const playerId = String(req.query.playerId ?? "");
+          if (!/^\d+$/.test(playerId)) {
+            return res.status(400).json({ error: "valid playerId required" });
+          }
+          return res.json(
+            await getPlayerSummary(
+              playerId,
+              String(req.query.season ?? new Date().getFullYear())
+            )
           );
         }
         case "player-profile": {

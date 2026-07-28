@@ -282,6 +282,12 @@ export type SearchPlayer = (Hitter | Pitcher) & {
   type?: "hitter" | "pitcher";
 };
 
+export type PlayerSummary = (Hitter | Pitcher) & {
+  type: "hitter" | "pitcher";
+  season: string;
+  updatedAt: string;
+};
+
 // ─── API 함수 ────────────────────────────────────────────────
 
 export const kboApi = {
@@ -360,6 +366,10 @@ export const kboApi = {
   /** 선수 검색 */
   searchPlayers: (q: string, season = "2026") =>
     fetchApi<{ data: SearchPlayer[]; query: string }>("search", { q, season }),
+
+  /** 선수 ID 기반 현재 시즌 요약 */
+  getPlayerSummary: (playerId: string, season = "2026") =>
+    fetchApi<PlayerSummary>("player-summary", { playerId, season }),
 
   /** 선수 연도별 통산 기록 (네이버/스태티즈 출처, WAR/wRC+/wOBA 포함) */
   getPlayerRecord: (playerId: string) =>

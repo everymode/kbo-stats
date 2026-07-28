@@ -14,6 +14,7 @@ import {
   withHitterQualification,
   withPitcherQualification,
 } from "../shared/qualification.js";
+import { getKboPagerEventTarget } from "../shared/kboPager.js";
 
 const BASE_URL = "https://www.koreabaseball.com";
 
@@ -158,8 +159,7 @@ async function fetchPagedHtml(
     "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$";
 
   for (let page = 2; page <= maxPages; page++) {
-    const target =
-      page % 5 === 1 ? `${pagerPrefix}btnNext` : `${pagerPrefix}btnNo${page}`;
+    const target = getKboPagerEventTarget(pagerPrefix, page);
     const fd = extractForm($page);
     fd.__EVENTTARGET = target;
     fd.__EVENTARGUMENT = "";
@@ -933,33 +933,4 @@ export async function getPitchersAll(season = "2026") {
   };
   setCached(cacheKey, result);
   return result;
-}
-
-// ─── 선수 검색 ─────────────────────────────────────────────
-export async function searchPlayers(q: string, season = "2026") {
-  const [hitterRes, pitcherRes] = await Promise.all([
-    getHittersAll(season),
-    getPitchersAll(season),
-  ]);
-
-  const results: any[] = [];
-
-  for (const p of hitterRes.data) {
-    if (
-      (p as any).playerName?.includes(q) ||
-      (p as any).teamName?.includes(q)
-    ) {
-      results.push({ ...p, type: "hitter" });
-    }
-  }
-  for (const p of pitcherRes.data) {
-    if (
-      (p as any).playerName?.includes(q) ||
-      (p as any).teamName?.includes(q)
-    ) {
-      results.push({ ...p, type: "pitcher" });
-    }
-  }
-
-  return { data: results, query: q };
 }
