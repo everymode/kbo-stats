@@ -57,23 +57,30 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (searchQuery.length < 1) {
+    const query = searchQuery.trim();
+    if (query.length < 1) {
       setSearchResults([]);
       setSearchOpen(false);
       return;
     }
 
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const res = await kboApi.searchPlayers(searchQuery);
-        setSearchResults(res.data);
-        setSearchOpen(true);
+        const res = await kboApi.searchPlayers(query);
+        if (!cancelled) {
+          setSearchResults(res.data);
+          setSearchOpen(true);
+        }
       } catch {
-        setSearchResults([]);
+        if (!cancelled) setSearchResults([]);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [searchQuery]);
 
   const handleSearchSelect = (player: SearchPlayer) => {

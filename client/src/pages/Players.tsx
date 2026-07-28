@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
-import { getPlayerDetailPath, kboApi, Hitter, Pitcher } from "@/lib/kboApi";
+import {
+  getPlayerDetailPath,
+  kboApi,
+  Hitter,
+  Pitcher,
+  SearchPlayer,
+} from "@/lib/kboApi";
 import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -98,7 +104,7 @@ function PlayerRow({
     <Link href={getPlayerDetailPath(player)}>
       <div className="flex cursor-pointer items-center gap-2 border-b border-border px-4 py-2.5 transition-colors hover:bg-accent">
         <div className="w-7 shrink-0 text-center font-stat text-xs font-bold text-muted-foreground">
-          {player.rank}
+          {player.rank > 0 ? player.rank : "–"}
         </div>
         <div className="flex w-32 shrink-0 items-center gap-2">
           <TeamBadge teamName={player.teamName} size="sm" />
@@ -140,6 +146,7 @@ export default function Players() {
   const [search, setSearch] = useState("");
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
   const [data, setData] = useState<(Hitter | Pitcher)[]>([]);
+  const [searchMatches, setSearchMatches] = useState<SearchPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
@@ -180,7 +187,45 @@ export default function Players() {
     loadData();
   }, [loadData]);
 
-  const filtered = data.filter(p => {
+  useEffect(() => {
+    const query = search.trim();
+    if (query.length < 2) {
+      setSearchMatches([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const response = await kboApi.searchPlayers(query, "2026");
+        if (!cancelled) setSearchMatches(response.data);
+      } catch {
+        if (!cancelled) setSearchMatches([]);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search]);
+
+  const playersById = new Map<string, Hitter | Pitcher>();
+  for (const player of data) {
+    playersById.set(
+      player.playerId || `${tab}:${player.playerName}:${player.teamName}`,
+      player
+    );
+  }
+  for (const player of searchMatches) {
+    if (player.type !== tab) continue;
+    playersById.set(
+      player.playerId || `${tab}:${player.playerName}:${player.teamName}`,
+      player
+    );
+  }
+
+  const filtered = Array.from(playersById.values()).filter(p => {
     const matchTeam =
       team === "전체" ||
       p.teamName.includes(team) ||

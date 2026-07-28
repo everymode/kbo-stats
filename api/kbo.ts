@@ -8,6 +8,7 @@ import {
   withHitterQualification,
   withPitcherQualification,
 } from "../shared/qualification.js";
+import { getKboPagerEventTarget } from "../shared/kboPager.js";
 import {
   parseKboDraftInfo,
   parseKboJoinInfo,
@@ -231,7 +232,7 @@ async function fHPages(
   // 2단계: pager를 따라 순차 페이지 이동
   let $page = $cur;
   for (let p = 2; p <= maxPages; p++) {
-    const target = p % 5 === 1 ? `${PFX}btnNext` : `${PFX}btnNo${p}`;
+    const target = getKboPagerEventTarget(PFX, p);
     const fd = extractForm($page);
     fd["__EVENTTARGET"] = target;
     fd["__EVENTARGUMENT"] = "";
@@ -491,6 +492,8 @@ interface SituationSplit {
   gdp: number;
 }
 
+type PlayerType = "hitter" | "pitcher";
+
 function nI(v: string | undefined) {
   return parseInt(String(v ?? "").replace(/,/g, ""), 10) || 0;
 }
@@ -608,26 +611,50 @@ function mapPitcherSeason(s: any): PitcherSeason {
   };
 }
 
+async function getNaverPlayerData(playerId: string) {
+  const ck = `nplayer_${playerId}`;
+  const cached = gc<any>(ck);
+  if (cached) return cached;
+
+  return dedup(ck, async () => {
+    const response = await axios.get(
+      `${NAVER_API}/players/kbo/${playerId}/playerend-record`,
+      { headers: NAVER_HEADERS, timeout: 15000 }
+    );
+    const result = response.data?.result;
+    if (!result?.playerId) {
+      throw new Error("네이버 선수 기록을 찾을 수 없습니다.");
+    }
+
+    let record = result.record;
+    if (typeof record === "string") {
+      try {
+        record = JSON.parse(record);
+      } catch {
+        record = {};
+      }
+    }
+
+    const playerType: PlayerType =
+      result.playerType === "pitcher" ? "pitcher" : "hitter";
+    const data = {
+      result,
+      record,
+      playerType,
+      seasonRows: Array.isArray(record?.season) ? record.season : [],
+    };
+    sc(ck, data);
+    return data;
+  });
+}
+
 async function getPlayerRecord(playerId: string) {
   const ck = `prec_${playerId}`;
   const c = gc(ck);
   if (c) return c;
-  const res = await axios.get(
-    `${NAVER_API}/players/kbo/${playerId}/playerend-record`,
-    { headers: NAVER_HEADERS, timeout: 15000 }
-  );
-  const r = res.data?.result ?? {};
-  let rec = r.record;
-  if (typeof rec === "string") {
-    try {
-      rec = JSON.parse(rec);
-    } catch {
-      rec = {};
-    }
-  }
-  const playerType: "hitter" | "pitcher" =
-    r.playerType === "pitcher" ? "pitcher" : "hitter";
-  const raw: any[] = Array.isArray(rec?.season) ? rec.season : [];
+  const naverData = await getNaverPlayerData(playerId);
+  const playerType = naverData.playerType;
+  const raw: any[] = naverData.seasonRows;
   // 연도 행만 오름차순(오래된→최근) 정렬, 통산 행은 맨 아래로
   const yearRows = raw.filter(s => String(s.gyear) !== "통산");
   const careerRows = raw.filter(s => String(s.gyear) === "통산");
@@ -646,8 +673,6 @@ async function getPlayerRecord(playerId: string) {
   sc(ck, result);
   return result;
 }
-
-type PlayerType = "hitter" | "pitcher";
 
 function readProfileValue(
   $: cheerio.CheerioAPI,
@@ -726,6 +751,138 @@ export async function getPlayerProfile(
       throw new Error("KBO 선수 프로필을 찾을 수 없습니다.");
     }
 
+    sc(ck, result);
+    return result;
+  });
+}
+
+export async function getPlayerSummary(playerId: string, season = "2026") {
+  const ck = `player_summary_${season}_${playerId}`;
+  const cached = gc<any>(ck);
+  if (cached) return cached;
+
+  return dedup(ck, async () => {
+    const naverData = await getNaverPlayerData(playerId);
+    const seasonRow = naverData.seasonRows.find(
+      (row: any) => String(row.gyear) === season
+    );
+    if (!seasonRow || num(seasonRow.gamenum) < 1) {
+      throw new Error(`${season} 시즌 1군 기록을 찾을 수 없습니다.`);
+    }
+
+    const [profile, qualificationContext] = await Promise.all([
+      getPlayerProfile(playerId, naverData.playerType),
+      getQualificationContext(season),
+    ]);
+    const currentTeam = teamName(seasonRow.team);
+    const teamInfo = ti(currentTeam);
+    const base = {
+      rank: 0,
+      playerName: profile.playerName,
+      playerId,
+      photoUrl: `${PHOTO_CDN}/${season}/${playerId}.jpg`,
+      teamName: currentTeam,
+      teamShort: teamInfo.short,
+      colors: teamInfo.colors,
+    };
+
+    let player: any;
+    if (naverData.playerType === "pitcher") {
+      const innings = String(seasonRow.inn ?? "0");
+      const inningsDecimal = pI(innings);
+      const so = num(seasonRow.kk);
+      const bb = num(seasonRow.bb);
+      const hr = num(seasonRow.hr);
+      const hbp = num(seasonRow.hp);
+      player = withPitcherQualification(
+        {
+          ...base,
+          era: String(seasonRow.era ?? "0.00"),
+          games: num(seasonRow.gamenum),
+          wins: num(seasonRow.w),
+          losses: num(seasonRow.l),
+          saves: num(seasonRow.sv),
+          holds: num(seasonRow.hold),
+          wpct: String(seasonRow.wra ?? "0"),
+          ip: innings,
+          hits: num(seasonRow.hit),
+          hr,
+          bb,
+          hbp,
+          so,
+          runs: num(seasonRow.r),
+          er: num(seasonRow.er),
+          whip: String(seasonRow.whip ?? "0.00"),
+          k9:
+            inningsDecimal > 0
+              ? ((so / inningsDecimal) * 9).toFixed(2)
+              : "0.00",
+          bb9:
+            inningsDecimal > 0
+              ? ((bb / inningsDecimal) * 9).toFixed(2)
+              : "0.00",
+          hr9:
+            inningsDecimal > 0
+              ? ((hr / inningsDecimal) * 9).toFixed(2)
+              : "0.00",
+          fip:
+            inningsDecimal > 0
+              ? (
+                  (13 * hr + 3 * (bb + hbp) - 2 * so) / inningsDecimal +
+                  3.1
+                ).toFixed(2)
+              : "0.00",
+        },
+        qualificationContext
+      );
+    } else {
+      const ab = num(seasonRow.ab);
+      const bb = num(seasonRow.bb);
+      const hbp = num(seasonRow.hp);
+      const sac = num(seasonRow.sh);
+      const sf = num(seasonRow.sf);
+      const pa = ab + bb + hbp + sac + sf;
+      player = withHitterQualification(
+        {
+          ...base,
+          avg: String(seasonRow.hra ?? "0"),
+          games: num(seasonRow.gamenum),
+          pa,
+          ab,
+          runs: num(seasonRow.run),
+          hits: num(seasonRow.hit),
+          doubles: num(seasonRow.h2),
+          triples: num(seasonRow.h3),
+          hr: num(seasonRow.hr),
+          tb: num(seasonRow.tb),
+          rbi: num(seasonRow.rbi),
+          sac,
+          sf,
+          bb,
+          ibb: num(seasonRow.ib),
+          hbp,
+          so: num(seasonRow.kk),
+          sb: num(seasonRow.sb),
+          cs: num(seasonRow.cs),
+          gdp: num(seasonRow.gd),
+          slg: String(seasonRow.slg ?? "0"),
+          obp: String(seasonRow.obp ?? "0"),
+          ops: String(seasonRow.ops ?? "0"),
+          bbPct: pa > 0 ? ((bb / pa) * 100).toFixed(1) : "0.0",
+          kPct: pa > 0 ? ((num(seasonRow.kk) / pa) * 100).toFixed(1) : "0.0",
+          iso: num(seasonRow.isop).toFixed(3),
+          babip: num(seasonRow.babip).toFixed(3),
+        },
+        qualificationContext
+      );
+    }
+
+    const result = {
+      ...player,
+      type: naverData.playerType,
+      season,
+      updatedAt: new Date().toISOString(),
+    };
     sc(ck, result);
     return result;
   });
@@ -1567,19 +1724,121 @@ function setProfileCacheHeaders(res: VercelResponse) {
   );
 }
 
-async function searchPlayers(q: string, season = "2026") {
-  const [hr, pr] = await Promise.all([
-    getHittersAll(season),
-    getPitchersAll(season),
-  ]);
-  const r: any[] = [];
-  for (const p of hr.data)
-    if ((p as any).playerName?.includes(q) || (p as any).teamName?.includes(q))
-      r.push({ ...p, type: "hitter" });
-  for (const p of pr.data)
-    if ((p as any).playerName?.includes(q) || (p as any).teamName?.includes(q))
-      r.push({ ...p, type: "pitcher" });
-  return { data: r, query: q };
+function setPlayerSummaryCacheHeaders(res: VercelResponse) {
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=0, s-maxage=300, stale-while-revalidate=1800"
+  );
+}
+
+interface KboPlayerSearchCandidate {
+  playerId: string;
+  playerName: string;
+  teamName: string;
+  position: string;
+  playerType: PlayerType;
+}
+
+async function searchKboPlayerDirectory(query: string) {
+  const ck = `player_directory_${query}`;
+  const cached = gc<KboPlayerSearchCandidate[]>(ck, HOME_CACHE_TTL);
+  if (cached) return cached;
+
+  return dedup(ck, async () => {
+    const $ = await fH(`${BASE_URL}/Player/Search.aspx`, {
+      searchWord: query,
+    });
+    const candidates: KboPlayerSearchCandidate[] = [];
+    const seen = new Set<string>();
+
+    $(".inquiry table tbody tr, table.tEx tbody tr").each((_, row) => {
+      const cells = $(row)
+        .find("td")
+        .map((__, cell) => $(cell).text().trim())
+        .get();
+      const href =
+        $(row).find("a[href*='playerId=']").first().attr("href") ?? "";
+      const playerId = href.match(/playerId=(\d+)/)?.[1] ?? "";
+      const playerName = cells[1] ?? "";
+      if (!playerId || !playerName || seen.has(playerId)) return;
+
+      seen.add(playerId);
+      candidates.push({
+        playerId,
+        playerName,
+        teamName: cells[2] ?? "",
+        position: cells[3] ?? "",
+        playerType: href.includes("PitcherDetail") ? "pitcher" : "hitter",
+      });
+    });
+
+    sc(ck, candidates);
+    return candidates;
+  });
+}
+
+export async function searchPlayers(q: string, season = "2026") {
+  const query = normalizeText(q);
+  if (!query) return { data: [], query: "" };
+
+  const ck = `player_search_${season}_${query}`;
+  const cached = gc<any>(ck);
+  if (cached) return cached;
+
+  return dedup(ck, async () => {
+    if (query.length >= 2) {
+      const candidates = await searchKboPlayerDirectory(query);
+      const exact = candidates.filter(
+        candidate => candidate.playerName === query
+      );
+      const selected = (exact.length ? exact : candidates).slice(0, 12);
+      const summaries = await Promise.all(
+        selected.map(candidate =>
+          getPlayerSummary(candidate.playerId, season).catch(() => null)
+        )
+      );
+      const directMatches = summaries.filter(
+        (player): player is NonNullable<typeof player> =>
+          Boolean(
+            player &&
+              (player.playerName.includes(query) ||
+                player.teamName.includes(query))
+          )
+      );
+
+      if (directMatches.length > 0) {
+        const result = { data: directMatches, query };
+        sc(ck, result);
+        return result;
+      }
+    }
+
+    const [hitterResponse, pitcherResponse] = await Promise.all([
+      getHittersAll(season),
+      getPitchersAll(season),
+    ]);
+    const data: any[] = [];
+    for (const player of hitterResponse.data) {
+      if (
+        player.playerName?.includes(query) ||
+        player.teamName?.includes(query)
+      ) {
+        data.push({ ...player, type: "hitter" });
+      }
+    }
+    for (const player of pitcherResponse.data) {
+      if (
+        player.playerName?.includes(query) ||
+        player.teamName?.includes(query)
+      ) {
+        data.push({ ...player, type: "pitcher" });
+      }
+    }
+
+    const result = { data, query };
+    sc(ck, result);
+    return result;
+  });
 }
 
 // ─── Vercel Handler ────────────────────────────────────────
@@ -1669,8 +1928,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case "search": {
         const q = String(req.query.q ?? "");
         if (!q) return res.json({ data: [], query: "" });
+        setPlayerSummaryCacheHeaders(res);
         return res.json(
           await searchPlayers(q, String(req.query.season ?? "2026"))
+        );
+      }
+      case "player-summary": {
+        const pid = String(req.query.playerId ?? "");
+        if (!/^\d+$/.test(pid)) {
+          return res.status(400).json({ error: "valid playerId required" });
+        }
+        setPlayerSummaryCacheHeaders(res);
+        return res.json(
+          await getPlayerSummary(
+            pid,
+            String(req.query.season ?? new Date().getFullYear())
+          )
         );
       }
       case "player-record": {
