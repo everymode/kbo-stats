@@ -15,6 +15,11 @@ import {
   parseKboSalary,
   type PlayerProfile,
 } from "../shared/playerProfile.js";
+import {
+  normalizePitchZones,
+  parsePitcherPlatoonRows,
+  type PitcherSituation,
+} from "../shared/pitcherInsight.js";
 
 // ─── KBO 크롤링 코드 ──────────────────────────────────────
 const BASE_URL = "https://www.koreabaseball.com";
@@ -635,11 +640,21 @@ async function getNaverPlayerData(playerId: string) {
       }
     }
 
+    let chart = result.chart;
+    if (typeof chart === "string") {
+      try {
+        chart = JSON.parse(chart);
+      } catch {
+        chart = {};
+      }
+    }
+
     const playerType: PlayerType =
       result.playerType === "pitcher" ? "pitcher" : "hitter";
     const data = {
       result,
       record,
+      chart,
       playerType,
       seasonRows: Array.isArray(record?.season) ? record.season : [],
     };
@@ -648,7 +663,7 @@ async function getNaverPlayerData(playerId: string) {
   });
 }
 
-async function getPlayerRecord(playerId: string) {
+export async function getPlayerRecord(playerId: string) {
   const ck = `prec_${playerId}`;
   const c = gc(ck);
   if (c) return c;
@@ -668,6 +683,10 @@ async function getPlayerRecord(playerId: string) {
     playerId,
     playerType,
     seasons,
+    pitchZones:
+      playerType === "pitcher"
+        ? normalizePitchZones(naverData.chart?.hot_cold)
+        : undefined,
     updatedAt: new Date().toISOString(),
   };
   sc(ck, result);
@@ -906,6 +925,30 @@ async function getHitterSituation(playerId: string) {
       seasonAvg: seasonAvgFromSplits(vsTypes.length ? vsTypes : counts),
       counts,
       vsTypes,
+      updatedAt: new Date().toISOString(),
+    };
+    sc(ck, result);
+    return result;
+  });
+}
+
+export async function getPitcherSituation(
+  playerId: string
+): Promise<PitcherSituation> {
+  const ck = `ps_${playerId}`;
+  const cached = gc<PitcherSituation>(ck);
+  if (cached) return cached;
+
+  return dedup(ck, async () => {
+    const $ = await fH(
+      `${BASE_URL}/Record/Player/PitcherDetail/Situation.aspx`,
+      {
+        playerId,
+      }
+    );
+    const result = {
+      playerId,
+      splits: parsePitcherPlatoonRows(pTableRows($, 4)),
       updatedAt: new Date().toISOString(),
     };
     sc(ck, result);
@@ -1963,6 +2006,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const pid = String(req.query.playerId ?? "");
         if (!pid) return res.status(400).json({ error: "playerId required" });
         return res.json(await getHitterSituation(pid));
+      }
+      case "pitcher-situation": {
+        const pid = String(req.query.playerId ?? "");
+        if (!/^\d+$/.test(pid)) {
+          return res.status(400).json({ error: "valid playerId required" });
+        }
+        setPlayerSummaryCacheHeaders(res);
+        return res.json(await getPitcherSituation(pid));
       }
       default:
         return res.status(404).json({ error: "Unknown action", action });

@@ -19,7 +19,9 @@ import {
   getHomeLeaders,
   getHomeSummary,
   getPlayerProfile,
+  getPlayerRecord,
   getPlayerSummary,
+  getPitcherSituation,
   searchPlayers,
 } from "../api/kbo.js";
 
@@ -131,6 +133,13 @@ async function startServer() {
             )
           );
         }
+        case "player-record": {
+          const playerId = String(req.query.playerId ?? "");
+          if (!/^\d+$/.test(playerId)) {
+            return res.status(400).json({ error: "valid playerId required" });
+          }
+          return res.json(await getPlayerRecord(playerId));
+        }
         case "player-profile": {
           const playerId = String(req.query.playerId ?? "");
           if (!playerId)
@@ -144,6 +153,13 @@ async function startServer() {
           if (!playerId)
             return res.status(400).json({ error: "playerId required" });
           return res.json(await getHitterSituation(playerId));
+        }
+        case "pitcher-situation": {
+          const playerId = String(req.query.playerId ?? "");
+          if (!/^\d+$/.test(playerId)) {
+            return res.status(400).json({ error: "valid playerId required" });
+          }
+          return res.json(await getPitcherSituation(playerId));
         }
         default:
           return res.status(404).json({ error: "Unknown action", action });
@@ -214,6 +230,32 @@ async function startServer() {
       res.json(data);
     } catch (e: any) {
       res.status(503).json({ error: e.message });
+    }
+  });
+
+  // 선수 연도별 기록과 투수 투구 구역
+  app.get("/api/kbo/player-record", async (req, res) => {
+    try {
+      const playerId = String(req.query.playerId ?? "");
+      if (!/^\d+$/.test(playerId)) {
+        return res.status(400).json({ error: "valid playerId required" });
+      }
+      return res.json(await getPlayerRecord(playerId));
+    } catch (e: any) {
+      return res.status(503).json({ error: e.message });
+    }
+  });
+
+  // 투수 상황별 기록 (좌타자/우타자 상대 피안타율)
+  app.get("/api/kbo/pitcher-situation", async (req, res) => {
+    try {
+      const playerId = String(req.query.playerId ?? "");
+      if (!/^\d+$/.test(playerId)) {
+        return res.status(400).json({ error: "valid playerId required" });
+      }
+      return res.json(await getPitcherSituation(playerId));
+    } catch (e: any) {
+      return res.status(503).json({ error: e.message });
     }
   });
 

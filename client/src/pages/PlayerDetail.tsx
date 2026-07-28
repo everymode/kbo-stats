@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useParams } from "wouter";
 import {
   kboApi,
@@ -9,21 +9,16 @@ import {
   HitterSeason,
   PitcherSeason,
   HitterSituation,
+  PitcherSituation,
+  PitchZone,
   SituationSplit,
   PlayerProfile,
 } from "@/lib/kboApi";
+import { normalizePitchZones } from "@shared/pitcherInsight";
 import TeamBadge from "@/components/TeamBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ExternalLink, User } from "lucide-react";
 import { Link } from "wouter";
-import {
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  Radar,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
 
 type SeasonDetailRow = {
   label: string;
@@ -69,21 +64,7 @@ function StatCard({
   );
 }
 
-// ─── 투수 레이더 데이터 ──────────────────────────────────
-function getPitcherRadarData(p: Pitcher) {
-  const era = parseFloat(p.era || "9.99");
-  const whip = parseFloat(p.whip || "2.00");
-  const ip = parseFloat(p.ip || "0");
-  const fip = parseFloat(p.fip || "9.99");
-  const k9 = parseFloat(p.k9 || "0");
-  return [
-    { subject: "구위", value: Math.min(100, Math.max(0, (5 - era) * 20)) },
-    { subject: "제구", value: Math.min(100, Math.max(0, (2 - whip) * 70)) },
-    { subject: "탈삼진", value: Math.min(100, k9 * 10) },
-    { subject: "이닝소화", value: Math.min(100, ip * 0.6) },
-    { subject: "FIP", value: Math.min(100, Math.max(0, (5 - fip) * 20)) },
-  ];
-}
+const EMPTY_PITCH_ZONES = normalizePitchZones(undefined);
 
 function parseAvgValue(value?: string) {
   const n = parseFloat(String(value ?? "0"));
@@ -93,6 +74,15 @@ function parseAvgValue(value?: string) {
 function displayAvg(value?: string) {
   const n = parseAvgValue(value);
   return n.toFixed(3).replace(/^(-?)0\./, "$1.");
+}
+
+function displayOptionalRate(value?: string | number | null) {
+  if (value === null || value === undefined || value === "" || value === "-") {
+    return "–";
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "–";
+  return parsed.toFixed(3).replace(/^(-?)0\./, "$1.");
 }
 
 function splitTone(
@@ -311,49 +301,148 @@ function PlayerDetailAnalysisGrid({ children }: { children: ReactNode }) {
   );
 }
 
-function PitcherRadarFallback({
-  playerName,
+function pitchZoneStyle(
+  pitchRate: number | null,
+  teamColor: string
+): CSSProperties | undefined {
+  if (pitchRate === null) return undefined;
+  const intensity = Math.min(56, 12 + pitchRate * 3.2);
+  return {
+    backgroundColor: `color-mix(in srgb, ${teamColor} ${intensity}%, var(--card))`,
+  };
+}
+
+function PitchZoneCell({
+  zone,
   teamColor,
-  radarData,
+  className = "",
 }: {
-  playerName: string;
-  teamColor: { primary: string };
-  radarData: ReturnType<typeof getPitcherRadarData>;
+  zone: PitchZone;
+  teamColor: string;
+  className?: string;
 }) {
+  const value = zone.pitchRate === null ? "–" : `${zone.pitchRate.toFixed(1)}%`;
+
   return (
-    <section className="flex h-full flex-col rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]">
-      <h3 className="mb-4 font-serif text-lg font-black text-foreground">
-        능력치 레이더
-      </h3>
-      <div className="h-56 flex-1 min-h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={radarData}>
-            <PolarGrid stroke="var(--border)" />
-            <PolarAngleAxis
-              dataKey="subject"
-              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-            />
-            <Radar
-              name={playerName}
-              dataKey="value"
-              stroke={teamColor.primary}
-              fill={teamColor.primary}
-              fillOpacity={0.25}
-              strokeWidth={2}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "var(--popover)",
-                border: "1px solid var(--border)",
-                borderRadius: "6px",
-                fontSize: "12px",
-                color: "var(--popover-foreground)",
-              }}
-              formatter={(val: number) => [`${val.toFixed(0)}점`, ""]}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
+    <div
+      className={`relative flex min-h-0 min-w-0 border-b border-r border-border text-sm font-black tabular-nums ${
+        zone.pitchRate === null
+          ? "bg-muted/30 text-muted-foreground/55"
+          : "text-foreground"
+      } ${className}`}
+      style={pitchZoneStyle(zone.pitchRate, teamColor)}
+      title={`${zone.zone}번 구역 ${zone.pitchRate === null ? "기록 없음" : value}`}
+      aria-label={`${zone.zone}번 구역 ${zone.pitchRate === null ? "기록 없음" : value}`}
+    >
+      {value}
+    </div>
+  );
+}
+
+function PitcherInsightPanel({
+  pitchZones,
+  situation,
+  loading,
+  seasonOps,
+  teamColor,
+}: {
+  pitchZones: PitchZone[];
+  situation: PitcherSituation | null;
+  loading: boolean;
+  seasonOps: number | null;
+  teamColor: { primary: string };
+}) {
+  const zonesByNumber = new Map(pitchZones.map(zone => [zone.zone, zone]));
+  const zone = (number: number) =>
+    zonesByNumber.get(number) ?? { zone: number, pitchRate: null };
+  const splitsBySide = new Map(
+    situation?.splits.map(split => [split.side, split]) ?? []
+  );
+
+  return (
+    <section
+      className="flex h-full flex-col rounded-[6px] border border-border bg-card p-5 shadow-[0_1px_2px_rgb(17_24_39/0.08)]"
+      aria-busy={loading}
+    >
+      <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-border pb-3">
+        <h3 className="font-serif text-lg font-black text-foreground">
+          투구 분포
+        </h3>
+        <span className="text-xs font-semibold text-muted-foreground">
+          투수 시점 · 2026 시즌
+        </span>
       </div>
+
+      <div className="flex flex-1 items-center justify-center py-1">
+        <div className="relative aspect-square w-full max-w-[272px] overflow-hidden border-l border-t border-border bg-muted/20">
+          <div className="grid h-full grid-cols-2 grid-rows-2">
+            <PitchZoneCell
+              zone={zone(10)}
+              teamColor={teamColor.primary}
+              className="items-start justify-start p-3"
+            />
+            <PitchZoneCell
+              zone={zone(11)}
+              teamColor={teamColor.primary}
+              className="items-start justify-end p-3"
+            />
+            <PitchZoneCell
+              zone={zone(12)}
+              teamColor={teamColor.primary}
+              className="items-end justify-start p-3"
+            />
+            <PitchZoneCell
+              zone={zone(13)}
+              teamColor={teamColor.primary}
+              className="items-end justify-end p-3"
+            />
+          </div>
+
+          <div className="absolute inset-[15.5%] grid grid-cols-3 grid-rows-3 border-l border-t border-border bg-card shadow-[0_2px_10px_rgb(15_23_42/0.18)]">
+            {Array.from({ length: 9 }, (_, index) => (
+              <PitchZoneCell
+                key={index + 1}
+                zone={zone(index + 1)}
+                teamColor={teamColor.primary}
+                className="items-center justify-center p-1"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 border-t border-border pt-4">
+        <h4 className="mb-3 text-sm font-black text-foreground">
+          타자 유형별 피안타율
+        </h4>
+        <div className="grid grid-cols-2 divide-x divide-border border-y border-border">
+          {(["left", "right"] as const).map(side => {
+            const split = splitsBySide.get(side);
+            return (
+              <div key={side} className="px-4 py-3 text-center">
+                <div className="mb-1 text-xs font-bold text-muted-foreground">
+                  {side === "left" ? "좌타자 상대" : "우타자 상대"}
+                </div>
+                <div className="font-stat text-2xl font-black tabular-nums text-foreground">
+                  {displayOptionalRate(split?.avg)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between pt-3">
+          <span className="text-xs font-bold text-muted-foreground">
+            시즌 피OPS
+          </span>
+          <span className="font-stat text-base font-black tabular-nums text-note">
+            {displayOptionalRate(seasonOps)}
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-3 border-t border-dashed border-border pt-3 text-xs text-muted-foreground">
+        투구 분포: 네이버 스포츠 · 상대 기록: KBO 공식 사이트
+      </p>
     </section>
   );
 }
@@ -362,26 +451,30 @@ function PlayerInsightPanel({
   isHitter,
   hitter,
   pitcher,
-  situation,
-  situationLoading,
-  playerName,
+  hitterSituation,
+  hitterSituationLoading,
+  pitcherSituation,
+  pitcherSituationLoading,
+  pitchZones,
+  seasonOps,
   teamColor,
-  radarData,
 }: {
   isHitter: boolean;
   hitter: Hitter | null;
   pitcher: Pitcher | null;
-  situation: HitterSituation | null;
-  situationLoading: boolean;
-  playerName: string;
+  hitterSituation: HitterSituation | null;
+  hitterSituationLoading: boolean;
+  pitcherSituation: PitcherSituation | null;
+  pitcherSituationLoading: boolean;
+  pitchZones: PitchZone[];
+  seasonOps: number | null;
   teamColor: { primary: string };
-  radarData: ReturnType<typeof getPitcherRadarData>;
 }) {
   if (isHitter && hitter) {
     return (
       <SituationPanel
-        situation={situation}
-        loading={situationLoading}
+        situation={hitterSituation}
+        loading={hitterSituationLoading}
         seasonAvg={hitter.avg}
       />
     );
@@ -389,10 +482,12 @@ function PlayerInsightPanel({
 
   if (pitcher) {
     return (
-      <PitcherRadarFallback
-        playerName={playerName}
+      <PitcherInsightPanel
+        pitchZones={pitchZones}
+        situation={pitcherSituation}
+        loading={pitcherSituationLoading}
+        seasonOps={seasonOps}
         teamColor={teamColor}
-        radarData={radarData}
       />
     );
   }
@@ -642,6 +737,9 @@ export default function PlayerDetail() {
   const [recordLoading, setRecordLoading] = useState(false);
   const [situation, setSituation] = useState<HitterSituation | null>(null);
   const [situationLoading, setSituationLoading] = useState(false);
+  const [pitcherSituation, setPitcherSituation] =
+    useState<PitcherSituation | null>(null);
+  const [pitcherSituationLoading, setPitcherSituationLoading] = useState(false);
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
@@ -709,6 +807,7 @@ export default function PlayerDetail() {
     }
     let cancelled = false;
     const loadRecord = async () => {
+      setRecord(null);
       setRecordLoading(true);
       try {
         const r = await kboApi.getPlayerRecord(playerId);
@@ -728,7 +827,14 @@ export default function PlayerDetail() {
   const teamColor = player
     ? getTeamColor(player.teamName)
     : { primary: "#666", secondary: "#fff" };
-  const radarData = pitcher ? getPitcherRadarData(pitcher) : [];
+  const pitchZones = record?.pitchZones ?? EMPTY_PITCH_ZONES;
+  const currentPitcherSeason =
+    record?.playerType === "pitcher"
+      ? (record.seasons as PitcherSeason[]).find(
+          season => season.year === "2026" && !season.isCareer
+        )
+      : undefined;
+  const seasonOps = currentPitcherSeason?.ops ?? null;
 
   useEffect(() => {
     if (!playerId) {
@@ -758,7 +864,7 @@ export default function PlayerDetail() {
     };
   }, [isHitter, playerId]);
 
-  // 타자만 상황별 기록을 로드한다. 투수는 기존 레이더 차트를 유지한다.
+  // 타자 상황별 기록
   useEffect(() => {
     if (!isHitter || !playerId) {
       setSituation(null);
@@ -778,6 +884,32 @@ export default function PlayerDetail() {
       }
     };
     loadSituation();
+    return () => {
+      cancelled = true;
+    };
+  }, [isHitter, playerId]);
+
+  // 투수 좌타자/우타자 상대 기록
+  useEffect(() => {
+    if (isHitter || !playerId) {
+      setPitcherSituation(null);
+      setPitcherSituationLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const loadPitcherSituation = async () => {
+      setPitcherSituation(null);
+      setPitcherSituationLoading(true);
+      try {
+        const data = await kboApi.getPitcherSituation(playerId);
+        if (!cancelled) setPitcherSituation(data);
+      } catch {
+        if (!cancelled) setPitcherSituation(null);
+      } finally {
+        if (!cancelled) setPitcherSituationLoading(false);
+      }
+    };
+    loadPitcherSituation();
     return () => {
       cancelled = true;
     };
@@ -1037,17 +1169,19 @@ export default function PlayerDetail() {
           </div>
         </div>
 
-        {/* 상황별 기록 또는 레이더 차트 + 상세 기록 */}
+        {/* 상황별 기록 + 상세 기록 */}
         <PlayerDetailAnalysisGrid>
           <PlayerInsightPanel
             isHitter={isHitter}
             hitter={hitter}
             pitcher={pitcher}
-            situation={situation}
-            situationLoading={situationLoading}
-            playerName={player.playerName}
+            hitterSituation={situation}
+            hitterSituationLoading={situationLoading}
+            pitcherSituation={pitcherSituation}
+            pitcherSituationLoading={recordLoading || pitcherSituationLoading}
+            pitchZones={pitchZones}
+            seasonOps={seasonOps}
             teamColor={teamColor}
-            radarData={radarData}
           />
           <SeasonDetailPanel rows={seasonDetailRows} />
         </PlayerDetailAnalysisGrid>
