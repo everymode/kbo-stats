@@ -5,6 +5,12 @@
 
 import type { PlayerProfile } from "@shared/playerProfile";
 export type { PlayerProfile } from "@shared/playerProfile";
+import type { PitcherSituation, PitchZone } from "@shared/pitcherInsight";
+export type {
+  PitcherSituation,
+  PitcherPlatoonSplit,
+  PitchZone,
+} from "@shared/pitcherInsight";
 
 const API_BASE = import.meta.env.VITE_KBO_API_URL || "/api/kbo";
 
@@ -274,6 +280,7 @@ export interface PlayerRecord {
   playerId: string;
   playerType: "hitter" | "pitcher";
   seasons: (HitterSeason | PitcherSeason)[];
+  pitchZones?: PitchZone[];
   updatedAt: string;
 }
 
@@ -382,6 +389,10 @@ export const kboApi = {
   /** 타자 상황별 기록 (볼카운트, 투수유형) */
   getHitterSituation: (playerId: string) =>
     fetchApi<HitterSituation>("hitter-situation", { playerId }),
+
+  /** 투수 상황별 기록 (좌타자/우타자 상대 피안타율) */
+  getPitcherSituation: (playerId: string) =>
+    fetchApi<PitcherSituation>("pitcher-situation", { playerId }),
 
   /** 헬스체크 */
   health: () => fetchApi<{ status: string; timestamp: string }>("health"),
